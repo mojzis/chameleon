@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { GAME_CONFIG_BOUNDS } from '../config'
 import { audioManager } from '../managers/AudioManager'
+import { settingsManager } from '../managers/SettingsManager'
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -18,6 +19,11 @@ export class MenuScene extends Phaser.Scene {
     graphics.fillStyle(0xE8F4F8, 1)
     graphics.fillRect(0, GAME_CONFIG_BOUNDS.height / 2, GAME_CONFIG_BOUNDS.width, GAME_CONFIG_BOUNDS.height / 2)
 
+    // Get font sizes from settings
+    const headingSize = settingsManager.getFontSizeValue('heading')
+    const questionSize = settingsManager.getFontSizeValue('question')
+    const bodySize = settingsManager.getFontSizeValue('body')
+
     // Title
     this.add.text(
       GAME_CONFIG_BOUNDS.centerX,
@@ -25,7 +31,7 @@ export class MenuScene extends Phaser.Scene {
       "Chameleon's Quest",
       {
         fontFamily: "'Quicksand', sans-serif",
-        fontSize: '64px',
+        fontSize: headingSize,
         color: '#2C3E50',
         align: 'center',
       }
@@ -38,7 +44,7 @@ export class MenuScene extends Phaser.Scene {
       'Amazon Insect Reading Adventure',
       {
         fontFamily: "'Quicksand', sans-serif",
-        fontSize: '32px',
+        fontSize: questionSize,
         color: '#5A6C7D',
         align: 'center',
       }
@@ -66,7 +72,7 @@ export class MenuScene extends Phaser.Scene {
       'Select Level',
       {
         fontFamily: "'Quicksand', sans-serif",
-        fontSize: '28px',
+        fontSize: questionSize,
         color: '#FFFFFF',
         align: 'center',
       }
@@ -94,8 +100,36 @@ export class MenuScene extends Phaser.Scene {
       'Encyclopedia 📖',
       {
         fontFamily: "'Quicksand', sans-serif",
-        fontSize: '28px',
+        fontSize: questionSize,
         color: '#FFFFFF',
+        align: 'center',
+      }
+    ).setOrigin(0.5)
+
+    // Settings button
+    const settingsButton = this.add
+      .rectangle(GAME_CONFIG_BOUNDS.centerX, 690, 300, 80, 0xF4C430)
+      .setInteractive()
+      .on('pointerdown', () => {
+        audioManager.playSoundEffect('uiClick')
+        // Dispatch event to open settings in React
+        window.dispatchEvent(new CustomEvent('openSettings'))
+      })
+      .on('pointerover', () => {
+        settingsButton.setFillStyle(0xF4D460)
+      })
+      .on('pointerout', () => {
+        settingsButton.setFillStyle(0xF4C430)
+      })
+
+    this.add.text(
+      GAME_CONFIG_BOUNDS.centerX,
+      690,
+      'Settings ⚙️',
+      {
+        fontFamily: "'Quicksand', sans-serif",
+        fontSize: questionSize,
+        color: '#2C3E50',
         align: 'center',
       }
     ).setOrigin(0.5)
@@ -103,11 +137,24 @@ export class MenuScene extends Phaser.Scene {
     // Info text
     this.add.text(
       GAME_CONFIG_BOUNDS.centerX,
-      700,
+      820,
       'Use arrow keys or mouse to aim • Press SPACEBAR or click to shoot',
       {
         fontFamily: "'Lexend', sans-serif",
-        fontSize: '16px',
+        fontSize: bodySize,
+        color: '#5A6C7D',
+        align: 'center',
+      }
+    ).setOrigin(0.5)
+
+    // Keyboard hint
+    this.add.text(
+      GAME_CONFIG_BOUNDS.centerX,
+      900,
+      'Press P to pause • Press ESC for encyclopedia',
+      {
+        fontFamily: "'Lexend', sans-serif",
+        fontSize: bodySize,
         color: '#5A6C7D',
         align: 'center',
       }

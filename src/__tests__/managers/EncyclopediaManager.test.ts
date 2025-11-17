@@ -5,6 +5,8 @@ describe('EncyclopediaManager', () => {
   let encyclopediaManager: EncyclopediaManager
 
   beforeEach(() => {
+    // Clear localStorage before each test to ensure clean state
+    localStorage.clear()
     encyclopediaManager = new EncyclopediaManager()
   })
 
