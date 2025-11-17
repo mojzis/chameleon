@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { CARD_CONFIG, GAME_CONFIG_BOUNDS } from '../config'
+import type { Tongue } from './Tongue'
 
 interface InsectData {
   id: string
@@ -12,6 +13,9 @@ export class InsectCard extends Phaser.GameObjects.Container {
   private isCorrect: boolean
   private fallSpeed: number = CARD_CONFIG.insectFallSpeed
   private isOffScreen: boolean = false
+  private attachedToTongue: Tongue | null = null
+  private isCaught: boolean = false
+  private helpGlow: Phaser.GameObjects.Graphics | null = null
 
   constructor(
     scene: Phaser.Scene,
@@ -44,6 +48,17 @@ export class InsectCard extends Phaser.GameObjects.Container {
   }
 
   update(delta: number) {
+    // If attached to tongue, follow tongue position
+    if (this.attachedToTongue) {
+      this.followTongue()
+      return
+    }
+
+    // If already caught, don't fall
+    if (this.isCaught) {
+      return
+    }
+
     // Fall gently
     this.y += (this.fallSpeed * delta) / 1000
 
@@ -80,5 +95,65 @@ export class InsectCard extends Phaser.GameObjects.Container {
         this.destroy()
       },
     })
+  }
+
+  attachToTongue(tongue: Tongue) {
+    this.attachedToTongue = tongue
+    this.isCaught = true
+
+    // Add rotation animation for caught effect
+    this.scene.tweens.add({
+      targets: this,
+      angle: this.angle + 360,
+      duration: 600,
+      ease: 'Quad.easeOut',
+    })
+  }
+
+  private followTongue() {
+    if (!this.attachedToTongue) return
+
+    const tipX = this.attachedToTongue.getTipX()
+    const tipY = this.attachedToTongue.getTipY()
+
+    // Smooth follow with slight lag for organic feel
+    this.x = Phaser.Math.Linear(this.x, tipX, 0.3)
+    this.y = Phaser.Math.Linear(this.y, tipY, 0.3)
+  }
+
+  detachFromTongue() {
+    this.attachedToTongue = null
+  }
+
+  showHelpGlow() {
+    // Create pulsing golden glow around correct insect
+    if (this.helpGlow) {
+      this.helpGlow.destroy()
+    }
+
+    this.helpGlow = this.scene.add.graphics()
+    this.helpGlow.lineStyle(4, 0xf4c430, 1)
+    this.helpGlow.strokeCircle(0, 0, 60)
+    this.add(this.helpGlow)
+
+    // Pulsing animation
+    this.scene.tweens.add({
+      targets: this.helpGlow,
+      alpha: 0.3,
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+    })
+  }
+
+  hideHelpGlow() {
+    if (this.helpGlow) {
+      this.helpGlow.destroy()
+      this.helpGlow = null
+    }
+  }
+
+  isCaughtByTongue(): boolean {
+    return this.isCaught
   }
 }
