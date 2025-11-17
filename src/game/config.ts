@@ -44,9 +44,28 @@ export const CHAMELEON_CONFIG = {
 } as const
 
 export const CARD_CONFIG = {
-  questionFallSpeed: 30,
-  insectFallSpeed: 40,
-  descentTimeout: 15000, // milliseconds
+  questionFallSpeed: 30, // pixels per second
+  insectFallSpeed: 40, // pixels per second (slightly faster than questions)
+  descentTimeout: 15000, // milliseconds before cards are unreachable
+  questionStartY: -100, // Start above screen
+  insectStartY: -50, // Start slightly below question
+} as const
+
+export const SPAWN_CONFIG = {
+  // Question spawning
+  questionSpawnX: 960, // Center X position
+  questionSpawnInterval: 8000, // 8 seconds between questions
+
+  // Insect spawning
+  insectSpawnDelay: 1500, // Wait 1.5s after question before spawning insects
+  insectSpawnStagger: 400, // 0.4s between each insect spawn
+  insectSpawnXMin: 300, // Left boundary for insect spawn
+  insectSpawnXMax: 1620, // Right boundary for insect spawn
+  insectSpacing: 200, // Minimum horizontal spacing between insects
+
+  // Timing
+  readingTime: 8000, // 8 seconds to read and respond
+  maxActiveQuestions: 2, // Max questions on screen at once
 } as const
 
 export const TONGUE_CONFIG = {
