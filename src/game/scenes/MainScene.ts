@@ -1,19 +1,15 @@
 import Phaser from 'phaser'
 import { GAME_CONFIG_BOUNDS, CHAMELEON_CONFIG, TONGUE_CONFIG } from '../config'
 import { Chameleon } from '../objects/Chameleon'
-import { QuestionCard } from '../objects/QuestionCard'
-import { InsectCard } from '../objects/InsectCard'
+import { SpawnManager } from '../managers/SpawnManager'
 
 export class MainScene extends Phaser.Scene {
   private chameleon!: Chameleon
+  private spawnManager!: SpawnManager
   private currentLevel: number = 1
   private score: number = 0
   private strikes: number = 0
   private maxStrikes: number = 3
-
-  // Placeholder for game objects
-  private questionCards: QuestionCard[] = []
-  private insectCards: InsectCard[] = []
 
   // UI elements
   private cooldownText!: Phaser.GameObjects.Text
@@ -61,10 +57,11 @@ export class MainScene extends Phaser.Scene {
     // Cooldown UI
     this.createCooldownUI()
 
-    // Game loop
-    this.time.delayedCall(2000, () => {
-      this.spawnQuestionCard()
-    })
+    // Initialize spawn manager
+    this.spawnManager = new SpawnManager(this, this.currentLevel)
+
+    // Start spawning questions and insects
+    this.spawnManager.start()
   }
 
   private createBackground() {
@@ -257,22 +254,6 @@ export class MainScene extends Phaser.Scene {
     this.cooldownRing.strokePath()
   }
 
-  private spawnQuestionCard() {
-    const question = {
-      id: 'placeholder-q1',
-      text: 'Which insect has wings you can see through?',
-    }
-
-    const card = new QuestionCard(
-      this,
-      GAME_CONFIG_BOUNDS.centerX,
-      100,
-      question
-    )
-
-    this.questionCards.push(card)
-  }
-
   private updateKeyboardRotation() {
     if (this.keyboardState.leftPressed) {
       this.chameleon.aimLeft()
@@ -296,22 +277,26 @@ export class MainScene extends Phaser.Scene {
     // Update cooldown UI
     this.updateCooldownUI()
 
-    // Update question cards (reverse iteration to safely remove items)
-    for (let i = this.questionCards.length - 1; i >= 0; i--) {
-      const card = this.questionCards[i]
-      card.update(this.game.loop.delta)
-      if (card.isOffScreen()) {
-        this.questionCards.splice(i, 1)
-      }
-    }
+    // Update spawn manager (handles question and insect updates)
+    this.spawnManager.update()
 
-    // Update insect cards (reverse iteration to safely remove items)
-    for (let i = this.insectCards.length - 1; i >= 0; i--) {
-      const card = this.insectCards[i]
+    // Update all question cards
+    const questionCards = this.spawnManager.getActiveQuestionCards()
+    questionCards.forEach((card) => {
       card.update(this.game.loop.delta)
-      if (card.isOffScreenCheck()) {
-        this.insectCards.splice(i, 1)
-      }
+    })
+
+    // Update all insect cards
+    const insectCards = this.spawnManager.getActiveInsectCards()
+    insectCards.forEach((card) => {
+      card.update(this.game.loop.delta)
+    })
+  }
+
+  shutdown() {
+    // Clean up spawn manager
+    if (this.spawnManager) {
+      this.spawnManager.destroy()
     }
   }
 }
