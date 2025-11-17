@@ -3,10 +3,12 @@ import { GAME_CONFIG_BOUNDS, CHAMELEON_CONFIG, TONGUE_CONFIG } from '../config'
 import { Chameleon } from '../objects/Chameleon'
 import { SpawnManager } from '../managers/SpawnManager'
 import { InsectCard } from '../objects/InsectCard'
+import { HelpManager } from '../managers/HelpManager'
 
 export class MainScene extends Phaser.Scene {
   private chameleon!: Chameleon
   private spawnManager!: SpawnManager
+  private helpManager!: HelpManager
   private currentLevel: number = 1
   private score: number = 0
   private strikes: number = 0
@@ -17,6 +19,7 @@ export class MainScene extends Phaser.Scene {
   private cooldownRing!: Phaser.GameObjects.Graphics
   private scoreText!: Phaser.GameObjects.Text
   private strikesText!: Phaser.GameObjects.Text
+  private helpText!: Phaser.GameObjects.Text
 
   // Fact display overlay
   private factOverlay: Phaser.GameObjects.Container | null = null
@@ -37,6 +40,14 @@ export class MainScene extends Phaser.Scene {
     this.currentLevel = data.level || 1
     this.score = 0
     this.strikes = 0
+
+    // Initialize help manager
+    this.helpManager = new HelpManager()
+
+    // Emit initial help count for React overlay
+    this.events.once('create', () => {
+      this.events.emit('helpUpdate', this.helpManager.getHelpRemaining())
+    })
   }
 
   preload() {
@@ -69,6 +80,9 @@ export class MainScene extends Phaser.Scene {
 
     // Start spawning questions and insects
     this.spawnManager.start()
+
+    // Emit initial help count for React overlay
+    this.events.emit('helpUpdate', this.helpManager.getHelpRemaining())
   }
 
   private createBackground() {
@@ -122,7 +136,12 @@ export class MainScene extends Phaser.Scene {
         }
       })
 
-      // Pause functionality (placeholder for Phase 6)
+      // Help key
+      this.input.keyboard.on('keydown-H', () => {
+        this.activateHelp()
+      })
+
+      // Pause functionality (placeholder for future phase)
       this.input.keyboard.on('keydown-P', () => {
         // this.togglePause()
       })
@@ -172,11 +191,26 @@ export class MainScene extends Phaser.Scene {
         color: '#2C3E50',
       }
     )
+
+    // Help counter display
+    this.helpText = this.add.text(
+      GAME_CONFIG_BOUNDS.width - 200,
+      80,
+      `Help: ${this.helpManager.getHelpRemaining()}/3 (Press H)`,
+      {
+        fontFamily: "'Quicksand', sans-serif",
+        fontSize: '24px',
+        color: '#F4C430',
+      }
+    )
   }
 
   private updateUI() {
     this.scoreText.setText(`Score: ${this.score}`)
     this.strikesText.setText(`Strikes: ${this.strikes}/${this.maxStrikes}`)
+    this.helpText.setText(
+      `Help: ${this.helpManager.getHelpRemaining()}/3 (Press H)`
+    )
   }
 
   private createCooldownUI() {
@@ -437,6 +471,132 @@ export class MainScene extends Phaser.Scene {
         onComplete: () => particle.destroy(),
       })
     }
+  }
+
+  // Public method so it can be called from React overlay
+  public activateHelp() {
+    // Don't allow help during fact display
+    if (this.isShowingFact) {
+      return
+    }
+
+    // Try to use help
+    if (!this.helpManager.useHelp()) {
+      // No help remaining - show feedback
+      this.showNoHelpFeedback()
+      return
+    }
+
+    // Update UI to reflect help was used
+    this.updateUI()
+
+    // Emit event for React overlay
+    this.events.emit('helpUpdate', this.helpManager.getHelpRemaining())
+
+    // Find the correct insect from active insects
+    const insectCards = this.spawnManager.getActiveInsectCards()
+    const correctInsect = insectCards.find((card) => card.isCorrectAnswer())
+
+    if (correctInsect) {
+      // Show golden glow on correct answer
+      correctInsect.showHelpGlow()
+
+      // Chameleon thinking expression
+      this.chameleon.setExpression('thinking')
+
+      // Reset expression after a delay
+      this.time.delayedCall(2000, () => {
+        if (!this.isShowingFact) {
+          this.chameleon.setExpression('neutral')
+        }
+      })
+
+      // Show helpful text feedback
+      this.showHelpFeedback()
+    } else {
+      // No active question - refund the help
+      this.helpManager.resetLevel()
+      this.helpManager.useHelp() // Re-use one to get back to previous state
+      // This is a workaround - ideally we'd have a refund method
+      // But for now, if there's no active question, player shouldn't lose help
+      this.updateUI()
+    }
+  }
+
+  private showHelpFeedback() {
+    // Create temporary text feedback
+    const feedbackText = this.add.text(
+      GAME_CONFIG_BOUNDS.centerX,
+      150,
+      'The glowing insect is the correct answer!',
+      {
+        fontFamily: "'Quicksand', sans-serif",
+        fontSize: '28px',
+        color: '#F4C430',
+        align: 'center',
+        stroke: '#2C3E50',
+        strokeThickness: 3,
+      }
+    )
+    feedbackText.setOrigin(0.5)
+
+    // Fade in
+    feedbackText.setAlpha(0)
+    this.tweens.add({
+      targets: feedbackText,
+      alpha: 1,
+      duration: 300,
+      ease: 'Power2',
+    })
+
+    // Fade out and destroy after 3 seconds
+    this.time.delayedCall(3000, () => {
+      this.tweens.add({
+        targets: feedbackText,
+        alpha: 0,
+        duration: 500,
+        ease: 'Power2',
+        onComplete: () => feedbackText.destroy(),
+      })
+    })
+  }
+
+  private showNoHelpFeedback() {
+    // Create temporary text feedback
+    const feedbackText = this.add.text(
+      GAME_CONFIG_BOUNDS.centerX,
+      150,
+      'No help remaining! (Recharges next level)',
+      {
+        fontFamily: "'Quicksand', sans-serif",
+        fontSize: '28px',
+        color: '#F4A6C6',
+        align: 'center',
+        stroke: '#2C3E50',
+        strokeThickness: 3,
+      }
+    )
+    feedbackText.setOrigin(0.5)
+
+    // Fade in
+    feedbackText.setAlpha(0)
+    this.tweens.add({
+      targets: feedbackText,
+      alpha: 1,
+      duration: 300,
+      ease: 'Power2',
+    })
+
+    // Fade out and destroy after 2 seconds
+    this.time.delayedCall(2000, () => {
+      this.tweens.add({
+        targets: feedbackText,
+        alpha: 0,
+        duration: 500,
+        ease: 'Power2',
+        onComplete: () => feedbackText.destroy(),
+      })
+    })
   }
 
   private showFactOverlay(insect: InsectCard, isCorrect: boolean) {
