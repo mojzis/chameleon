@@ -3,7 +3,6 @@ import { GAME_CONFIG_BOUNDS, CHAMELEON_CONFIG, TONGUE_CONFIG } from '../config'
 import { Chameleon } from '../objects/Chameleon'
 import { SpawnManager } from '../managers/SpawnManager'
 import { InsectCard } from '../objects/InsectCard'
-import { QuestionCard } from '../objects/QuestionCard'
 
 export class MainScene extends Phaser.Scene {
   private chameleon!: Chameleon
@@ -363,8 +362,8 @@ export class MainScene extends Phaser.Scene {
   }
 
   private onInsectCaught(insect: InsectCard) {
-    // Let spawn manager handle cleanup and get correct insect info
-    const correctInsect = this.spawnManager.onInsectCaught(insect)
+    // Let spawn manager handle cleanup
+    this.spawnManager.onInsectCaught(insect)
 
     // Check if correct answer
     if (insect.isCorrectAnswer()) {
