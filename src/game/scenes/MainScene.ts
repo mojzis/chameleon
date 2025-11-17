@@ -11,6 +11,7 @@ import { LevelProgressManager } from '../managers/LevelProgressManager'
 import { LEVELS } from '../../data/levels'
 import { encyclopediaManager } from '../../App'
 import { audioManager } from '../managers/AudioManager'
+import { settingsManager } from '../managers/SettingsManager'
 
 export class MainScene extends Phaser.Scene {
   private chameleon!: Chameleon
@@ -37,6 +38,9 @@ export class MainScene extends Phaser.Scene {
   // Fact display overlay
   private factOverlay: Phaser.GameObjects.Container | null = null
   private isShowingFact: boolean = false
+
+  // Pause state
+  private isPaused: boolean = false
 
   // Input state
   private keyboardState = {
@@ -114,6 +118,24 @@ export class MainScene extends Phaser.Scene {
 
     // Start background music
     audioManager.startBackgroundMusic()
+
+    // Listen for pause/resume events from React
+    const handleResumeGame = () => {
+      this.resumeGame()
+    }
+
+    const handleQuitToMenu = () => {
+      this.quitToMenu()
+    }
+
+    window.addEventListener('resumeGame', handleResumeGame)
+    window.addEventListener('quitToMenu', handleQuitToMenu)
+
+    // Clean up listeners when scene shuts down
+    this.events.once('shutdown', () => {
+      window.removeEventListener('resumeGame', handleResumeGame)
+      window.removeEventListener('quitToMenu', handleQuitToMenu)
+    })
   }
 
   private createBackground() {
@@ -250,20 +272,23 @@ export class MainScene extends Phaser.Scene {
         this.activateHelp()
       })
 
-      // Encyclopedia key (ESC)
+      // Encyclopedia key (ESC) - only if not in-game
       this.input.keyboard.on('keydown-ESC', () => {
-        window.dispatchEvent(new CustomEvent('openEncyclopedia'))
+        // Don't open encyclopedia while showing fact
+        if (!this.isShowingFact) {
+          this.togglePause()
+        }
       })
 
-      // Pause functionality (placeholder for future phase)
+      // Pause functionality
       this.input.keyboard.on('keydown-P', () => {
-        // this.togglePause()
+        this.togglePause()
       })
     }
 
-    // Mouse input with smoothing
+    // Mouse input with smoothing (unless keyboard-only mode)
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
-      if (this.mouseTrackingEnabled) {
+      if (this.mouseTrackingEnabled && !settingsManager.isKeyboardOnlyMode()) {
         // Smooth aim tracking
         this.chameleon.aimAtPoint(pointer.x, pointer.y)
       }
@@ -282,17 +307,21 @@ export class MainScene extends Phaser.Scene {
   }
 
   private createUI() {
+    // Get font sizes from settings
+    const headingSize = settingsManager.getFontSizeValue('heading')
+    const bodySize = settingsManager.getFontSizeValue('body')
+
     // Level display
     this.add.text(50, 30, `Level ${this.currentLevel}`, {
       fontFamily: "'Quicksand', sans-serif",
-      fontSize: '28px',
+      fontSize: headingSize,
       color: '#2C3E50',
     })
 
     // Score display
     this.scoreText = this.add.text(50, 80, `Score: ${this.scoreManager.getScore()}`, {
       fontFamily: "'Quicksand', sans-serif",
-      fontSize: '24px',
+      fontSize: bodySize,
       color: '#2C3E50',
     })
 
@@ -303,20 +332,21 @@ export class MainScene extends Phaser.Scene {
       `Strikes: ${this.strikes}/${this.maxStrikes}`,
       {
         fontFamily: "'Quicksand', sans-serif",
-        fontSize: '24px',
+        fontSize: bodySize,
         color: '#2C3E50',
       }
     )
 
     // Help counter display
+    const helpColor = settingsManager.getHighContrastGlow().color
     this.helpText = this.add.text(
       GAME_CONFIG_BOUNDS.width - 200,
       80,
       `Help: ${this.helpManager.getHelpRemaining()}/3 (Press H)`,
       {
         fontFamily: "'Quicksand', sans-serif",
-        fontSize: '24px',
-        color: '#F4C430',
+        fontSize: bodySize,
+        color: '#' + helpColor.toString(16).padStart(6, '0'),
       }
     )
   }
@@ -429,14 +459,68 @@ export class MainScene extends Phaser.Scene {
     // Already handled by the above logic
   }
 
+  private togglePause() {
+    if (this.isPaused) {
+      this.resumeGame()
+    } else {
+      this.pauseGame()
+    }
+  }
+
+  private pauseGame() {
+    if (this.isPaused || this.isShowingFact) {
+      return // Already paused or showing fact
+    }
+
+    this.isPaused = true
+
+    // Stop spawn manager
+    this.spawnManager.stop()
+
+    // Pause physics
+    this.physics.pause()
+
+    // Notify React to show pause overlay
+    window.dispatchEvent(new CustomEvent('gamePaused'))
+  }
+
+  private resumeGame() {
+    if (!this.isPaused) {
+      return // Not paused
+    }
+
+    this.isPaused = false
+
+    // Resume spawn manager
+    this.spawnManager.start()
+
+    // Resume physics
+    this.physics.resume()
+
+    // Notify React to hide pause overlay
+    window.dispatchEvent(new CustomEvent('gameResumed'))
+  }
+
+  private quitToMenu() {
+    // Stop spawning
+    this.spawnManager.stop()
+
+    // Stop background music
+    audioManager.stopBackgroundMusic()
+
+    // Return to menu scene
+    this.scene.stop('MainScene')
+    this.scene.start('MenuScene')
+  }
+
   update() {
     // Update background layers (parallax animation)
     this.backgroundLayers.forEach((layer) => {
       layer.update(this.game.loop.delta)
     })
 
-    // Don't update game state while showing fact overlay
-    if (this.isShowingFact) {
+    // Don't update game state while paused or showing fact overlay
+    if (this.isPaused || this.isShowingFact) {
       return
     }
 
@@ -827,6 +911,11 @@ export class MainScene extends Phaser.Scene {
     contentBox.strokeRoundedRect(boxX, boxY, boxWidth, boxHeight, 16)
     overlay.add(contentBox)
 
+    // Get font sizes from settings
+    const headingSize = settingsManager.getFontSizeValue('heading')
+    const questionSize = settingsManager.getFontSizeValue('question')
+    const bodySize = settingsManager.getFontSizeValue('body')
+
     // Title
     const titleText = isCorrect ? 'Correct!' : 'Oops!'
     const title = this.add.text(
@@ -835,7 +924,7 @@ export class MainScene extends Phaser.Scene {
       titleText,
       {
         fontFamily: "'Quicksand', sans-serif",
-        fontSize: '48px',
+        fontSize: headingSize,
         color: isCorrect ? '#7BC8A0' : '#F4A6C6',
         align: 'center',
       }
@@ -851,7 +940,7 @@ export class MainScene extends Phaser.Scene {
       insectData.commonName,
       {
         fontFamily: "'Quicksand', sans-serif",
-        fontSize: '32px',
+        fontSize: headingSize,
         color: '#2C3E50',
         align: 'center',
       }
@@ -869,7 +958,7 @@ export class MainScene extends Phaser.Scene {
       factText,
       {
         fontFamily: "'Lexend', sans-serif",
-        fontSize: '20px',
+        fontSize: questionSize,
         color: '#2C3E50',
         align: 'center',
         wordWrap: { width: boxWidth - 100 },
@@ -885,7 +974,7 @@ export class MainScene extends Phaser.Scene {
       'Press SPACE or Click to continue',
       {
         fontFamily: "'Quicksand', sans-serif",
-        fontSize: '18px',
+        fontSize: bodySize,
         color: '#7BA7BC',
         align: 'center',
       }

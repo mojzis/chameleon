@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { COLORS, THEME } from '../../data/theme'
 import { CARD_CONFIG, GAME_CONFIG_BOUNDS } from '../config'
+import { settingsManager } from '../managers/SettingsManager'
 
 interface QuestionData {
   id: string
@@ -10,7 +11,7 @@ interface QuestionData {
 export class QuestionCard extends Phaser.GameObjects.Container {
   private questionText!: Phaser.GameObjects.Text
   private background!: Phaser.GameObjects.Graphics
-  private fallSpeed: number = CARD_CONFIG.questionFallSpeed
+  private fallSpeed: number
   private questionData: QuestionData
   private offScreen: boolean = false
   private spawnTime: number = 0
@@ -26,6 +27,11 @@ export class QuestionCard extends Phaser.GameObjects.Container {
     this.questionData = question
     this.spawnTime = scene.time.now
 
+    // Adjust fall speed based on difficulty settings
+    // Lower reading time multiplier (harder) = faster fall
+    const timeMultiplier = settingsManager.getReadingTimeMultiplier()
+    this.fallSpeed = CARD_CONFIG.questionFallSpeed / timeMultiplier
+
     // Background card with rounded corners
     this.background = scene.add.graphics()
     this.background.fillStyle(COLORS.cardBg, 0.95)
@@ -34,10 +40,11 @@ export class QuestionCard extends Phaser.GameObjects.Container {
     this.background.strokeRoundedRect(-200, -60, 400, 120, 16)
     this.add(this.background)
 
-    // Question text (large, readable)
+    // Question text (large, readable) with font size from settings
+    const questionSize = settingsManager.getFontSizeValue('question')
     this.questionText = scene.add.text(0, 0, question.text, {
       fontFamily: "'Quicksand', sans-serif",
-      fontSize: '22px',
+      fontSize: questionSize,
       color: THEME.textPrimary,
       align: 'center',
       wordWrap: { width: 360 },

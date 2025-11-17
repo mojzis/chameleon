@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import PhaserGame from './components/PhaserGame'
 import InsectEncyclopedia from './components/InsectEncyclopedia'
 import AudioControl from './components/AudioControl'
+import Settings from './components/Settings'
+import PauseOverlay from './components/PauseOverlay'
 import { EncyclopediaManager } from './game/managers/EncyclopediaManager'
 import './App.css'
 
@@ -11,6 +13,8 @@ const encyclopediaManager = new EncyclopediaManager()
 function App() {
   const [gameReady, setGameReady] = useState(false)
   const [showEncyclopedia, setShowEncyclopedia] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [showPause, setShowPause] = useState(false)
   const [unlockedInsects, setUnlockedInsects] = useState<string[]>([])
 
   // Load initial unlocked insects
@@ -31,17 +35,53 @@ function App() {
       setUnlockedInsects(encyclopediaManager.getUnlockedInsects())
     }
 
+    const handleOpenSettings = () => {
+      setShowSettings(true)
+    }
+
+    const handleGamePaused = () => {
+      setShowPause(true)
+    }
+
+    const handleGameResumed = () => {
+      setShowPause(false)
+    }
+
     window.addEventListener('openEncyclopedia', handleOpenEncyclopedia as EventListener)
     window.addEventListener('insectUnlocked', handleInsectUnlocked as EventListener)
+    window.addEventListener('openSettings', handleOpenSettings as EventListener)
+    window.addEventListener('gamePaused', handleGamePaused as EventListener)
+    window.addEventListener('gameResumed', handleGameResumed as EventListener)
 
     return () => {
       window.removeEventListener('openEncyclopedia', handleOpenEncyclopedia as EventListener)
       window.removeEventListener('insectUnlocked', handleInsectUnlocked as EventListener)
+      window.removeEventListener('openSettings', handleOpenSettings as EventListener)
+      window.removeEventListener('gamePaused', handleGamePaused as EventListener)
+      window.removeEventListener('gameResumed', handleGameResumed as EventListener)
     }
   }, [])
 
   const handleCloseEncyclopedia = () => {
     setShowEncyclopedia(false)
+  }
+
+  const handleCloseSettings = () => {
+    setShowSettings(false)
+  }
+
+  const handleResume = () => {
+    setShowPause(false)
+    window.dispatchEvent(new CustomEvent('resumeGame'))
+  }
+
+  const handleOpenSettingsFromPause = () => {
+    setShowSettings(true)
+  }
+
+  const handleQuitToMenu = () => {
+    setShowPause(false)
+    window.dispatchEvent(new CustomEvent('quitToMenu'))
   }
 
   return (
@@ -55,6 +95,16 @@ function App() {
         <InsectEncyclopedia
           unlockedInsects={unlockedInsects}
           onClose={handleCloseEncyclopedia}
+        />
+      )}
+      {showSettings && (
+        <Settings onClose={handleCloseSettings} />
+      )}
+      {showPause && (
+        <PauseOverlay
+          onResume={handleResume}
+          onSettings={handleOpenSettingsFromPause}
+          onQuit={handleQuitToMenu}
         />
       )}
     </div>

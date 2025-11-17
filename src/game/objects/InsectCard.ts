@@ -2,11 +2,12 @@ import Phaser from 'phaser'
 import { CARD_CONFIG, GAME_CONFIG_BOUNDS } from '../config'
 import { Insect } from '../../types'
 import type { Tongue } from './Tongue'
+import { settingsManager } from '../managers/SettingsManager'
 
 export class InsectCard extends Phaser.GameObjects.Container {
   private insectData: Insect
   private isCorrect: boolean
-  private fallSpeed: number = CARD_CONFIG.insectFallSpeed
+  private fallSpeed: number
   private isOffScreen: boolean = false
   private attachedToTongue: Tongue | null = null
   private isCaught: boolean = false
@@ -27,6 +28,11 @@ export class InsectCard extends Phaser.GameObjects.Container {
     this.isCorrect = isCorrect
     this.driftOffset = Math.random() * Math.PI * 2 // Random phase for drift
 
+    // Adjust fall speed based on difficulty settings
+    // Lower reading time multiplier (harder) = faster fall
+    const timeMultiplier = settingsManager.getReadingTimeMultiplier()
+    this.fallSpeed = CARD_CONFIG.insectFallSpeed / timeMultiplier
+
     // Create insect sprite using imageKey
     this.insectSprite = scene.add.sprite(0, 0, insect.imageKey)
     this.insectSprite.setOrigin(0.5, 0.5)
@@ -43,9 +49,10 @@ export class InsectCard extends Phaser.GameObjects.Container {
     this.add(shadow)
 
     // Add label below with common name
+    const labelSize = settingsManager.getFontSizeValue('small')
     const label = scene.add.text(0, 60, insect.commonName, {
       fontFamily: "'Quicksand', sans-serif",
-      fontSize: '16px',
+      fontSize: labelSize,
       color: '#2C3E50',
       align: 'center',
       wordWrap: { width: 150 },
@@ -162,9 +169,13 @@ export class InsectCard extends Phaser.GameObjects.Container {
       this.helpGlow.destroy()
     }
 
+    // Get colorblind-adjusted glow color
+    const glowColors = settingsManager.getHighContrastGlow()
+    const glowColor = settingsManager.getColorblindColor(glowColors.color)
+
     // Add pulsing glow around correct insect
     this.helpGlow = this.scene.add.graphics()
-    this.helpGlow.lineStyle(4, 0xf4c430, 1) // Golden glow
+    this.helpGlow.lineStyle(4, glowColor, 1) // Colorblind-adjusted glow
     this.helpGlow.strokeCircle(0, 0, 60)
     this.add(this.helpGlow)
 
