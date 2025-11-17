@@ -47,7 +47,7 @@ export class MenuScene extends Phaser.Scene {
       .setInteractive()
       .on('pointerdown', () => {
         this.scene.stop('MenuScene')
-        this.scene.start('MainScene', { level: 1 })
+        this.scene.start('LevelSelectScene')
       })
       .on('pointerover', () => {
         startButton.setFillStyle(0x88B8A8)
@@ -59,7 +59,7 @@ export class MenuScene extends Phaser.Scene {
     this.add.text(
       GAME_CONFIG_BOUNDS.centerX,
       500,
-      'Start Game',
+      'Select Level',
       {
         fontFamily: "'Quicksand', sans-serif",
         fontSize: '28px',

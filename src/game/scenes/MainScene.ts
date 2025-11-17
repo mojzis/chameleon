@@ -6,15 +6,21 @@ import { InsectCard } from '../objects/InsectCard'
 import { HelpManager } from '../managers/HelpManager'
 import { BackgroundLayer } from '../objects/BackgroundLayer'
 import { PlaceholderAssets } from '../utils/PlaceholderAssets'
+import { ScoreManager } from '../managers/ScoreManager'
+import { LevelProgressManager } from '../managers/LevelProgressManager'
+import { LEVELS } from '../../data/levels'
 
 export class MainScene extends Phaser.Scene {
   private chameleon!: Chameleon
   private spawnManager!: SpawnManager
   private helpManager!: HelpManager
+  private scoreManager!: ScoreManager
+  private progressManager!: LevelProgressManager
   private currentLevel: number = 1
-  private score: number = 0
   private strikes: number = 0
   private maxStrikes: number = 3
+  private questionsCompleted: number = 0
+  private targetQuestions: number = 5 // Default, will be set by level config
 
   // Background layers
   private backgroundLayers: BackgroundLayer[] = []
@@ -43,11 +49,21 @@ export class MainScene extends Phaser.Scene {
 
   init(data: { level: number }) {
     this.currentLevel = data.level || 1
-    this.score = 0
     this.strikes = 0
+    this.questionsCompleted = 0
 
-    // Initialize help manager
+    // Get level config
+    const levelConfig = LEVELS[this.currentLevel - 1]
+    this.maxStrikes = levelConfig.strikes
+    this.targetQuestions = levelConfig.insectCount * 2 // 2 questions per insect
+
+    // Initialize managers
     this.helpManager = new HelpManager()
+    this.scoreManager = new ScoreManager()
+    this.progressManager = new LevelProgressManager()
+
+    // Record that this level was played
+    this.progressManager.recordLevelPlayed(this.currentLevel)
 
     // Emit initial help count for React overlay
     this.events.once('create', () => {
@@ -260,7 +276,7 @@ export class MainScene extends Phaser.Scene {
     })
 
     // Score display
-    this.scoreText = this.add.text(50, 80, `Score: ${this.score}`, {
+    this.scoreText = this.add.text(50, 80, `Score: ${this.scoreManager.getScore()}`, {
       fontFamily: "'Quicksand', sans-serif",
       fontSize: '24px',
       color: '#2C3E50',
@@ -292,7 +308,7 @@ export class MainScene extends Phaser.Scene {
   }
 
   private updateUI() {
-    this.scoreText.setText(`Score: ${this.score}`)
+    this.scoreText.setText(`Score: ${this.scoreManager.getScore()}`)
     this.strikesText.setText(`Strikes: ${this.strikes}/${this.maxStrikes}`)
     this.helpText.setText(
       `Help: ${this.helpManager.getHelpRemaining()}/3 (Press H)`
@@ -502,8 +518,12 @@ export class MainScene extends Phaser.Scene {
   }
 
   private onCorrectAnswer(insect: InsectCard) {
-    // Update score
-    this.score += 10
+    // Record correct answer with insect ID
+    const insectData = insect.getInsectData()
+    this.scoreManager.recordCorrect(insectData.id)
+    this.scoreManager.recordQuestionAttempted()
+    this.questionsCompleted++
+
     this.updateUI()
 
     // Chameleon happy expression
@@ -514,9 +534,17 @@ export class MainScene extends Phaser.Scene {
 
     // Show fact overlay
     this.showFactOverlay(insect, true)
+
+    // Check if level is complete (enough correct answers)
+    this.checkLevelCompletion()
   }
 
   private onWrongAnswer(insect: InsectCard) {
+    // Record incorrect answer with insect ID
+    const insectData = insect.getInsectData()
+    this.scoreManager.recordIncorrect(insectData.id)
+    this.scoreManager.recordQuestionAttempted()
+
     // Add strike
     this.strikes++
     this.updateUI()
@@ -527,10 +555,10 @@ export class MainScene extends Phaser.Scene {
     // Show fact overlay with correct answer info
     this.showFactOverlay(insect, false)
 
-    // Check if game over
+    // Check if game over (too many strikes)
     if (this.strikes >= this.maxStrikes) {
       this.time.delayedCall(3000, () => {
-        this.scene.start('MenuScene')
+        this.endLevel(false) // Failed
       })
     }
   }
@@ -577,6 +605,9 @@ export class MainScene extends Phaser.Scene {
       this.showNoHelpFeedback()
       return
     }
+
+    // Record help usage in score manager
+    this.scoreManager.recordHelpUsed()
 
     // Update UI to reflect help was used
     this.updateUI()
@@ -687,6 +718,49 @@ export class MainScene extends Phaser.Scene {
         ease: 'Power2',
         onComplete: () => feedbackText.destroy(),
       })
+    })
+  }
+
+  private checkLevelCompletion() {
+    // Complete level if enough correct answers achieved
+    const correctAnswers = this.scoreManager.getCorrectAnswers()
+    if (correctAnswers >= this.targetQuestions) {
+      // Delay to show last fact, then end level
+      this.time.delayedCall(3000, () => {
+        this.endLevel(true) // Completed successfully
+      })
+    }
+  }
+
+  private endLevel(completed: boolean) {
+    // Stop spawning
+    this.spawnManager.stop()
+
+    // End score tracking
+    this.scoreManager.endLevel()
+
+    // Get final stats
+    const stats = this.scoreManager.getStats()
+
+    // Update progress manager if completed
+    if (completed) {
+      this.progressManager.completeLevel(
+        this.currentLevel,
+        stats.score,
+        stats.accuracy,
+        stats.insectsDiscovered.size > 0 ? Array.from(stats.insectsDiscovered) : [],
+        stats.helpUsed
+      )
+    }
+
+    // Transition to result scene
+    this.scene.stop('MainScene')
+    this.scene.start('ResultScene', {
+      level: this.currentLevel,
+      stats: stats,
+      completed: completed,
+      strikes: this.strikes,
+      maxStrikes: this.maxStrikes,
     })
   }
 
