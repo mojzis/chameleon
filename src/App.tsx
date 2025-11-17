@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import PhaserGame from './components/PhaserGame'
 import InsectEncyclopedia from './components/InsectEncyclopedia'
+import AudioControl from './components/AudioControl'
 import { EncyclopediaManager } from './game/managers/EncyclopediaManager'
 import './App.css'
 
@@ -49,6 +50,7 @@ function App() {
         onGameReady={() => setGameReady(true)}
         gameReady={gameReady}
       />
+      <AudioControl />
       {showEncyclopedia && (
         <InsectEncyclopedia
           unlockedInsects={unlockedInsects}

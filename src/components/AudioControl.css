@@ -1,0 +1,62 @@
+.audio-control-button {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+
+  width: 56px;
+  height: 56px;
+
+  background: rgba(123, 167, 188, 0.95);
+  border: 3px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transition: all 0.2s ease;
+
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.audio-control-button:hover {
+  background: rgba(136, 184, 168, 0.95);
+  transform: scale(1.1);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.audio-control-button:active {
+  transform: scale(0.95);
+}
+
+.audio-icon {
+  font-size: 28px;
+  line-height: 1;
+  user-select: none;
+}
+
+/* Accessibility: Provide visual feedback for keyboard navigation */
+.audio-control-button:focus {
+  outline: 3px solid #F4C430;
+  outline-offset: 3px;
+}
+
+/* Animation when toggling */
+.audio-control-button.toggling {
+  animation: pulse 0.3s ease-out;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

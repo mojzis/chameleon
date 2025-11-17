@@ -10,6 +10,7 @@ import { ScoreManager } from '../managers/ScoreManager'
 import { LevelProgressManager } from '../managers/LevelProgressManager'
 import { LEVELS } from '../../data/levels'
 import { encyclopediaManager } from '../../App'
+import { audioManager } from '../managers/AudioManager'
 
 export class MainScene extends Phaser.Scene {
   private chameleon!: Chameleon
@@ -110,6 +111,9 @@ export class MainScene extends Phaser.Scene {
 
     // Emit initial help count for React overlay
     this.events.emit('helpUpdate', this.helpManager.getHelpRemaining())
+
+    // Start background music
+    audioManager.startBackgroundMusic()
   }
 
   private createBackground() {
@@ -233,6 +237,8 @@ export class MainScene extends Phaser.Scene {
       this.input.keyboard.on('keydown-SPACE', () => {
         if (!this.chameleon.isCoolingDown()) {
           this.chameleon.shootTongue(this)
+          // Play tongue shooting sound
+          audioManager.playSoundEffect('tongueShoot')
         } else {
           // Buffer input if on cooldown
           this.chameleon.bufferInput()
@@ -266,6 +272,8 @@ export class MainScene extends Phaser.Scene {
     this.input.on('pointerdown', () => {
       if (!this.chameleon.isCoolingDown()) {
         this.chameleon.shootTongue(this)
+        // Play tongue shooting sound
+        audioManager.playSoundEffect('tongueShoot')
       } else {
         // Buffer input if on cooldown
         this.chameleon.bufferInput()
@@ -468,6 +476,9 @@ export class MainScene extends Phaser.Scene {
     if (this.spawnManager) {
       this.spawnManager.destroy()
     }
+
+    // Stop background music when leaving scene
+    audioManager.stopBackgroundMusic()
   }
 
   private checkTongueCollision() {
@@ -539,8 +550,12 @@ export class MainScene extends Phaser.Scene {
     // Chameleon happy expression
     this.chameleon.setExpression('happy')
 
+    // Play correct answer sound
+    audioManager.playSoundEffect('correctAnswer')
+
     // Celebration effect
     this.createCelebrationParticles()
+    audioManager.playSoundEffect('celebration')
 
     // Show fact overlay
     this.showFactOverlay(insect, true)
@@ -565,6 +580,9 @@ export class MainScene extends Phaser.Scene {
 
     // Chameleon sad expression
     this.chameleon.setExpression('sad')
+
+    // Play wrong answer sound (gentle, not punishing)
+    audioManager.playSoundEffect('wrongAnswer')
 
     // Show fact overlay with correct answer info
     this.showFactOverlay(insect, false)
@@ -622,6 +640,9 @@ export class MainScene extends Phaser.Scene {
 
     // Record help usage in score manager
     this.scoreManager.recordHelpUsed()
+
+    // Play help activation sound
+    audioManager.playSoundEffect('helpActivated')
 
     // Update UI to reflect help was used
     this.updateUI()
