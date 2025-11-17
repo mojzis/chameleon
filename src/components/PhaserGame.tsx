@@ -3,6 +3,9 @@ import Phaser from 'phaser'
 import { GAME_CONFIG } from '../game/config'
 import { MainScene } from '../game/scenes/MainScene'
 import { MenuScene } from '../game/scenes/MenuScene'
+import { LevelSelectScene } from '../game/scenes/LevelSelectScene'
+import { LevelIntroScene } from '../game/scenes/LevelIntroScene'
+import { ResultScene } from '../game/scenes/ResultScene'
 import GameOverlay from './GameOverlay'
 
 interface PhaserGameProps {
@@ -18,7 +21,7 @@ export default function PhaserGame({ onGameReady }: PhaserGameProps) {
     const config: Phaser.Types.Core.GameConfig = {
       ...GAME_CONFIG,
       parent: 'phaser-container',
-      scene: [MenuScene, MainScene],
+      scene: [MenuScene, LevelSelectScene, LevelIntroScene, MainScene, ResultScene],
     }
 
     phaserRef.current = new Phaser.Game(config)
