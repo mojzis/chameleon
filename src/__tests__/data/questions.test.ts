@@ -127,14 +127,25 @@ describe('questions.ts data utilities', () => {
 
     it('should return all level 1 questions from sample data', () => {
       const level1Questions = getQuestionsByLevel(1)
-      expect(level1Questions.length).toBe(5) // Based on the sample data
+      expect(level1Questions.length).toBe(15) // Phase 5: 3 questions per insect, 5 insects
 
+      // Verify we have questions for all level 1 insects
       const expectedIds = [
         'hercules-1',
+        'hercules-2',
+        'hercules-3',
         'glass-wing-1',
+        'glass-wing-2',
+        'glass-wing-3',
         'titan-1',
+        'titan-2',
+        'titan-3',
         'morpho-1',
+        'morpho-2',
+        'morpho-3',
         'scarab-1',
+        'scarab-2',
+        'scarab-3',
       ]
 
       expectedIds.forEach(id => {
