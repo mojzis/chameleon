@@ -73,6 +73,24 @@ describe('ScoreManager', () => {
       expect(scoreManager.getScore()).toBe(30)
       expect(scoreManager.getAccuracy()).toBe(100)
     })
+
+    it('should track discovered insect IDs', () => {
+      scoreManager.recordCorrect('hercules-beetle')
+      scoreManager.recordCorrect('titan-beetle')
+
+      const discovered = scoreManager.getDiscoveredInsects()
+      expect(discovered).toHaveLength(2)
+      expect(discovered).toContain('hercules-beetle')
+      expect(discovered).toContain('titan-beetle')
+    })
+
+    it('should not duplicate insect IDs', () => {
+      scoreManager.recordCorrect('hercules-beetle')
+      scoreManager.recordCorrect('hercules-beetle')
+
+      const discovered = scoreManager.getDiscoveredInsects()
+      expect(discovered).toHaveLength(1)
+    })
   })
 
   describe('recordIncorrect', () => {
@@ -101,6 +119,14 @@ describe('ScoreManager', () => {
       scoreManager.recordIncorrect()
       expect(scoreManager.getScore()).toBe(0)
       expect(scoreManager.getAccuracy()).toBe(0)
+    })
+
+    it('should still track discovered insects even when incorrect', () => {
+      scoreManager.recordIncorrect('leafcutter-ant')
+
+      const discovered = scoreManager.getDiscoveredInsects()
+      expect(discovered).toHaveLength(1)
+      expect(discovered).toContain('leafcutter-ant')
     })
   })
 
@@ -197,6 +223,22 @@ describe('ScoreManager', () => {
       expect(scoreManager.getScore()).toBe(10)
       expect(scoreManager.getAccuracy()).toBe(100)
     })
+
+    it('should reset discovered insects', () => {
+      scoreManager.recordCorrect('hercules-beetle')
+      scoreManager.recordCorrect('titan-beetle')
+      scoreManager.reset()
+
+      expect(scoreManager.getDiscoveredInsects()).toHaveLength(0)
+    })
+
+    it('should reset help usage', () => {
+      scoreManager.recordHelpUsed()
+      scoreManager.recordHelpUsed()
+      scoreManager.reset()
+
+      expect(scoreManager.getHelpUsed()).toBe(0)
+    })
   })
 
   describe('integration tests', () => {
@@ -279,6 +321,92 @@ describe('ScoreManager', () => {
 
       expect(scoreManager.getScore()).toBe(500) // 50 correct * 10 points
       expect(scoreManager.getAccuracy()).toBe(50) // 50 correct out of 100 total
+    })
+  })
+
+  describe('help tracking', () => {
+    it('should track help usage', () => {
+      expect(scoreManager.getHelpUsed()).toBe(0)
+
+      scoreManager.recordHelpUsed()
+      expect(scoreManager.getHelpUsed()).toBe(1)
+
+      scoreManager.recordHelpUsed()
+      scoreManager.recordHelpUsed()
+      expect(scoreManager.getHelpUsed()).toBe(3)
+    })
+  })
+
+  describe('duration tracking', () => {
+    it('should track time from start', () => {
+      // Wait a small amount of time
+      const duration = scoreManager.getDuration()
+      expect(duration).toBeGreaterThanOrEqual(0)
+    })
+
+    it('should return duration in seconds', () => {
+      const duration = scoreManager.getDuration()
+      expect(Number.isInteger(duration)).toBe(true)
+    })
+
+    it('should freeze duration when level ends', (done) => {
+      setTimeout(() => {
+        scoreManager.endLevel()
+        const duration1 = scoreManager.getDuration()
+
+        setTimeout(() => {
+          const duration2 = scoreManager.getDuration()
+          expect(duration2).toBe(duration1) // Should be frozen
+          done()
+        }, 50)
+      }, 50)
+    })
+  })
+
+  describe('stats', () => {
+    it('should return complete stats object', () => {
+      scoreManager.recordCorrect('hercules-beetle')
+      scoreManager.recordIncorrect('titan-beetle')
+      scoreManager.recordHelpUsed()
+      scoreManager.recordQuestionAttempted()
+      scoreManager.recordQuestionAttempted()
+
+      const stats = scoreManager.getStats()
+
+      expect(stats.score).toBe(10)
+      expect(stats.correctAnswers).toBe(1)
+      expect(stats.totalAnswers).toBe(2)
+      expect(stats.accuracy).toBe(50)
+      expect(stats.helpUsed).toBe(1)
+      expect(stats.insectsDiscovered.size).toBe(2)
+      expect(stats.questionsAttempted).toBe(2)
+      expect(stats.duration).toBeGreaterThanOrEqual(0)
+      expect(stats.startTime).toBeGreaterThan(0)
+    })
+
+    it('should include all discovered insects in stats', () => {
+      scoreManager.recordCorrect('hercules-beetle')
+      scoreManager.recordCorrect('titan-beetle')
+      scoreManager.recordIncorrect('glass-wing-butterfly')
+
+      const stats = scoreManager.getStats()
+
+      expect(Array.from(stats.insectsDiscovered)).toContain('hercules-beetle')
+      expect(Array.from(stats.insectsDiscovered)).toContain('titan-beetle')
+      expect(Array.from(stats.insectsDiscovered)).toContain('glass-wing-butterfly')
+    })
+  })
+
+  describe('question tracking', () => {
+    it('should track questions attempted', () => {
+      expect(scoreManager.getQuestionsAttempted()).toBe(0)
+
+      scoreManager.recordQuestionAttempted()
+      expect(scoreManager.getQuestionsAttempted()).toBe(1)
+
+      scoreManager.recordQuestionAttempted()
+      scoreManager.recordQuestionAttempted()
+      expect(scoreManager.getQuestionsAttempted()).toBe(3)
     })
   })
 })
