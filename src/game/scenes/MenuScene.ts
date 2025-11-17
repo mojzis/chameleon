@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { GAME_CONFIG_BOUNDS } from '../config'
+import { audioManager } from '../managers/AudioManager'
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -7,6 +8,8 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create() {
+    // Start background music for menu
+    audioManager.startBackgroundMusic()
     // Background gradient
     const graphics = this.add.graphics()
     graphics.fillStyle(0xA8D8EA, 1)
@@ -46,6 +49,7 @@ export class MenuScene extends Phaser.Scene {
       .rectangle(GAME_CONFIG_BOUNDS.centerX, 450, 300, 80, 0x7BA7BC)
       .setInteractive()
       .on('pointerdown', () => {
+        audioManager.playSoundEffect('uiClick')
         this.scene.stop('MenuScene')
         this.scene.start('LevelSelectScene')
       })
@@ -73,6 +77,7 @@ export class MenuScene extends Phaser.Scene {
       .rectangle(GAME_CONFIG_BOUNDS.centerX, 570, 300, 80, 0x88B8A8)
       .setInteractive()
       .on('pointerdown', () => {
+        audioManager.playSoundEffect('uiClick')
         // Dispatch event to open encyclopedia in React
         window.dispatchEvent(new CustomEvent('openEncyclopedia'))
       })

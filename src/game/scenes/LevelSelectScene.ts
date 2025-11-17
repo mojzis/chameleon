@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { GAME_CONFIG_BOUNDS } from '../config'
 import { LEVELS } from '../../data/levels'
 import { LevelProgressManager } from '../managers/LevelProgressManager'
+import { audioManager } from '../managers/AudioManager'
 
 export class LevelSelectScene extends Phaser.Scene {
   private progressManager!: LevelProgressManager
@@ -13,6 +14,9 @@ export class LevelSelectScene extends Phaser.Scene {
   create() {
     // Initialize progress manager
     this.progressManager = new LevelProgressManager()
+
+    // Continue background music from menu (already playing)
+    // audioManager.startBackgroundMusic() is already called in MenuScene
 
     // Background gradient
     this.createBackground()
@@ -267,6 +271,7 @@ export class LevelSelectScene extends Phaser.Scene {
       )
 
       card.on('pointerdown', () => {
+        audioManager.playSoundEffect('uiClick')
         this.scene.stop('LevelSelectScene')
         this.scene.start('LevelIntroScene', { level: level.id })
       })
@@ -348,6 +353,7 @@ export class LevelSelectScene extends Phaser.Scene {
     )
 
     button.on('pointerdown', () => {
+      audioManager.playSoundEffect('uiClick')
       this.scene.stop('LevelSelectScene')
       this.scene.start('MenuScene')
     })

@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { GAME_CONFIG_BOUNDS } from '../config'
 import { LEVELS } from '../../data/levels'
 import { INSECTS } from '../../data/insects'
+import { audioManager } from '../managers/AudioManager'
 
 interface LevelIntroData {
   level: number
@@ -296,6 +297,7 @@ export class LevelIntroScene extends Phaser.Scene {
     )
 
     button.on('pointerdown', () => {
+      audioManager.playSoundEffect('uiClick')
       this.scene.stop('LevelIntroScene')
       this.scene.start('MainScene', { level: this.levelNumber })
     })
@@ -401,6 +403,7 @@ export class LevelIntroScene extends Phaser.Scene {
     )
 
     backButton.on('pointerdown', () => {
+      audioManager.playSoundEffect('uiClick')
       this.scene.stop('LevelIntroScene')
       this.scene.start('LevelSelectScene')
     })

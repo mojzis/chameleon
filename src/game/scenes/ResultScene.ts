@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { GAME_CONFIG_BOUNDS } from '../config'
 import { LevelStats } from '../managers/ScoreManager'
 import { LEVELS } from '../../data/levels'
+import { audioManager } from '../managers/AudioManager'
 
 interface ResultSceneData {
   level: number
@@ -396,7 +397,10 @@ export class ResultScene extends Phaser.Scene {
       ),
       Phaser.Geom.Rectangle.Contains
     )
-    graphics.on('pointerdown', onClick)
+    graphics.on('pointerdown', () => {
+      audioManager.playSoundEffect('uiClick')
+      onClick()
+    })
     graphics.on('pointerover', () => {
       graphics.clear()
       graphics.fillStyle(Phaser.Display.Color.GetColor(
