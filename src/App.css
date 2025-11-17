@@ -1,0 +1,22 @@
+.app-container {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #A8D8EA 0%, #E8F4F8 100%);
+}
+
+#phaser-container {
+  width: 100%;
+  height: 100%;
+  max-width: 1920px;
+  max-height: 1080px;
+  position: relative;
+}
+
+canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+}
