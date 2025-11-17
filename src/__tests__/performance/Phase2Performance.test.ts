@@ -8,8 +8,22 @@ describe('Phase 2 Performance Benchmarks', () => {
 
   beforeEach(() => {
     scene = {
+      sys: {
+        queueDepthSort: vi.fn(),
+        events: {
+          once: vi.fn(),
+          on: vi.fn(),
+        },
+      },
       add: {
         existing: vi.fn().mockReturnThis(),
+        sprite: vi.fn().mockReturnValue({
+          setOrigin: vi.fn().mockReturnThis(),
+          setScale: vi.fn().mockReturnThis(),
+          setTexture: vi.fn().mockReturnThis(),
+          setVisible: vi.fn().mockReturnThis(),
+          destroy: vi.fn(),
+        }),
         circle: vi.fn().mockReturnValue({
           setStrokeStyle: vi.fn().mockReturnThis(),
           setAlpha: vi.fn().mockReturnThis(),

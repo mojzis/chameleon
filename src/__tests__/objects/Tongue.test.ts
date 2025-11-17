@@ -10,6 +10,13 @@ describe('Tongue', () => {
   beforeEach(() => {
     // Create minimal mock scene
     scene = {
+      sys: {
+        queueDepthSort: vi.fn(),
+        events: {
+          once: vi.fn(),
+          on: vi.fn(),
+        },
+      },
       add: {
         existing: vi.fn().mockReturnThis(),
         graphics: vi.fn().mockReturnValue({
