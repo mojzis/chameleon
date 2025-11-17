@@ -4,6 +4,8 @@ import { Chameleon } from '../objects/Chameleon'
 import { SpawnManager } from '../managers/SpawnManager'
 import { InsectCard } from '../objects/InsectCard'
 import { HelpManager } from '../managers/HelpManager'
+import { BackgroundLayer } from '../objects/BackgroundLayer'
+import { PlaceholderAssets } from '../utils/PlaceholderAssets'
 
 export class MainScene extends Phaser.Scene {
   private chameleon!: Chameleon
@@ -13,6 +15,9 @@ export class MainScene extends Phaser.Scene {
   private score: number = 0
   private strikes: number = 0
   private maxStrikes: number = 3
+
+  // Background layers
+  private backgroundLayers: BackgroundLayer[] = []
 
   // UI elements
   private cooldownText!: Phaser.GameObjects.Text
@@ -51,8 +56,13 @@ export class MainScene extends Phaser.Scene {
   }
 
   preload() {
-    // Placeholder asset loading - will use actual images in Phase 2+
-    // For now, we'll create colored rectangles in create()
+    // Generate placeholder assets if real images don't exist
+    if (PlaceholderAssets.shouldGeneratePlaceholders(this)) {
+      PlaceholderAssets.generateAll(this)
+    }
+    // Real images would be loaded here:
+    // this.load.image('chameleon-head-neutral', 'assets/chameleon/chameleon-head-neutral.png')
+    // etc.
   }
 
   create() {
@@ -86,23 +96,99 @@ export class MainScene extends Phaser.Scene {
   }
 
   private createBackground() {
-    const graphics = this.add.graphics()
-    graphics.fillStyle(0xa8d8ea, 1)
-    graphics.fillRect(
+    // Layer 1: Sky gradient (static, depth 0)
+    const skyLayer = new BackgroundLayer(
+      this,
+      'level-bg-sky',
+      0, // No horizontal scroll
+      0, // No vertical scroll
+      0, // No float
       0,
-      0,
-      GAME_CONFIG_BOUNDS.width,
-      GAME_CONFIG_BOUNDS.height
+      0 // Furthest back
     )
+    this.backgroundLayers.push(skyLayer)
 
-    // Placeholder rainforest hint (light green layer at bottom)
-    graphics.fillStyle(0xb8c8b0, 0.3)
-    graphics.fillRect(
+    // Layer 2: Distant canopy (slow parallax, depth 1)
+    const distantCanopy = new BackgroundLayer(
+      this,
+      'level-bg-distant-canopy',
+      0.1, // Very slow horizontal scroll
       0,
-      GAME_CONFIG_BOUNDS.height - 200,
-      GAME_CONFIG_BOUNDS.width,
-      200
+      5, // Gentle float
+      0.3, // Slow frequency
+      1
     )
+    this.backgroundLayers.push(distantCanopy)
+
+    // Layer 3: Mid-canopy (medium parallax, depth 2)
+    const midCanopy = new BackgroundLayer(
+      this,
+      'level-bg-mid-canopy',
+      0.3, // Medium horizontal scroll
+      0,
+      8, // More float
+      0.5, // Medium frequency
+      2
+    )
+    this.backgroundLayers.push(midCanopy)
+
+    // Layer 4: Foreground vines (fast parallax, depth 3)
+    const foreground = new BackgroundLayer(
+      this,
+      'level-bg-foreground',
+      0.6, // Faster horizontal scroll
+      0,
+      10, // Even more float
+      0.7, // Faster frequency
+      3
+    )
+    this.backgroundLayers.push(foreground)
+
+    // Layer 5: Forest floor (static at bottom, depth 4)
+    const floor = this.add.tileSprite(
+      GAME_CONFIG_BOUNDS.centerX,
+      GAME_CONFIG_BOUNDS.height - 100,
+      GAME_CONFIG_BOUNDS.width,
+      200,
+      'level-bg-floor'
+    )
+    floor.setOrigin(0.5, 0.5)
+    floor.setDepth(4)
+
+    // Add subtle particle effects
+    this.createParticleEffects()
+  }
+
+  private createParticleEffects() {
+    // Falling leaves effect
+    const leafParticles = this.add.particles(0, 0, 'leaf-particle', {
+      x: { min: 0, max: GAME_CONFIG_BOUNDS.width },
+      y: -20,
+      lifespan: 8000,
+      speedY: { min: 20, max: 40 },
+      speedX: { min: -10, max: 10 },
+      scale: { start: 0.8, end: 0.4 },
+      alpha: { start: 0.7, end: 0 },
+      angle: { min: 0, max: 360 },
+      rotate: { min: -180, max: 180 },
+      frequency: 800, // One leaf every 800ms
+      quantity: 1,
+    })
+    leafParticles.setDepth(5) // In front of background, behind game objects
+
+    // Mist effect (very subtle)
+    const mistParticles = this.add.particles(0, 0, 'mist-particle', {
+      x: { min: 0, max: GAME_CONFIG_BOUNDS.width },
+      y: { min: GAME_CONFIG_BOUNDS.height * 0.3, max: GAME_CONFIG_BOUNDS.height * 0.7 },
+      lifespan: 12000,
+      speedX: { min: -5, max: 5 },
+      speedY: { min: -2, max: 2 },
+      scale: { start: 0.5, end: 1.5 },
+      alpha: { start: 0, end: 0.15, ease: 'Sine.easeInOut' },
+      frequency: 2000,
+      quantity: 1,
+    })
+    mistParticles.setDepth(2) // Between background layers
   }
 
   private setupInput() {
@@ -314,6 +400,11 @@ export class MainScene extends Phaser.Scene {
   }
 
   update() {
+    // Update background layers (parallax animation)
+    this.backgroundLayers.forEach((layer) => {
+      layer.update(this.game.loop.delta)
+    })
+
     // Don't update game state while showing fact overlay
     if (this.isShowingFact) {
       return
