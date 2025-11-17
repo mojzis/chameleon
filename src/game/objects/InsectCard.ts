@@ -12,6 +12,7 @@ export class InsectCard extends Phaser.GameObjects.Container {
   private isCaught: boolean = false
   private helpGlow: Phaser.GameObjects.Graphics | null = null
   private driftOffset: number = 0
+  private insectSprite!: Phaser.GameObjects.Sprite
 
   constructor(
     scene: Phaser.Scene,
@@ -26,11 +27,20 @@ export class InsectCard extends Phaser.GameObjects.Container {
     this.isCorrect = isCorrect
     this.driftOffset = Math.random() * Math.PI * 2 // Random phase for drift
 
-    // Create placeholder insect (colored circle)
-    const color = parseInt(insect.color.replace('#', '0x'), 16)
-    const insectShape = scene.add.circle(0, 0, 40, color)
-    insectShape.setStrokeStyle(2, 0xffffff, 0.5)
-    this.add(insectShape)
+    // Create insect sprite using imageKey
+    this.insectSprite = scene.add.sprite(0, 0, insect.imageKey)
+    this.insectSprite.setOrigin(0.5, 0.5)
+
+    // Scale based on insect size
+    const scale = insect.size === 'large' ? 0.8 : insect.size === 'medium' ? 0.6 : 0.4
+    this.insectSprite.setScale(scale)
+    this.add(this.insectSprite)
+
+    // Add soft shadow for depth
+    const shadow = scene.add.ellipse(0, 5, 80 * scale, 20 * scale, 0x000000)
+    shadow.setAlpha(0.2)
+    shadow.setDepth(-1)
+    this.add(shadow)
 
     // Add label below with common name
     const label = scene.add.text(0, 60, insect.commonName, {
@@ -52,6 +62,16 @@ export class InsectCard extends Phaser.GameObjects.Container {
       alpha: 1,
       duration: 400,
       ease: 'Power2',
+    })
+
+    // Gentle floating/rotation animation
+    scene.tweens.add({
+      targets: this.insectSprite,
+      angle: { from: -5, to: 5 },
+      duration: 2000 + Math.random() * 1000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
     })
   }
 

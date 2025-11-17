@@ -14,14 +14,8 @@ export class Chameleon extends Phaser.GameObjects.Container {
   private aiming: boolean = false
   private inputBuffer: boolean = false
 
-  // Visual components
-  private head!: Phaser.GameObjects.Arc
-  private leftEye!: Phaser.GameObjects.Arc
-  private rightEye!: Phaser.GameObjects.Arc
-  private leftEyeWhite!: Phaser.GameObjects.Arc
-  private rightEyeWhite!: Phaser.GameObjects.Arc
-  private leftEyeShine!: Phaser.GameObjects.Arc
-  private rightEyeShine!: Phaser.GameObjects.Arc
+  // Visual components - using sprites now
+  private headSprite!: Phaser.GameObjects.Sprite
   private aimingReticle!: Phaser.GameObjects.Graphics
   private cooldownIndicator: Phaser.GameObjects.Graphics | null = null
 
@@ -40,38 +34,12 @@ export class Chameleon extends Phaser.GameObjects.Container {
   }
 
   private createChameleonVisuals() {
-    // Main head (green circle) with outline for definition
-    this.head = this.scene.add.circle(0, 0, 50, 0x7bc8a0)
-    this.head.setStrokeStyle(2, 0x5a9a80, 1)
-    this.add(this.head)
-
-    // Highlight for 3D effect
-    const highlight = this.scene.add.circle(-15, -20, 12, 0xa8e0c8)
-    highlight.setAlpha(0.6)
-    this.add(highlight)
-
-    // Eye sclera (white part)
-    this.leftEyeWhite = this.scene.add.circle(-20, -10, 12, 0xffffff)
-    this.rightEyeWhite = this.scene.add.circle(20, -10, 12, 0xffffff)
-    this.add(this.leftEyeWhite)
-    this.add(this.rightEyeWhite)
-
-    // Iris (dark part)
-    this.leftEye = this.scene.add.circle(-20, -10, 7, 0x2c3e50)
-    this.rightEye = this.scene.add.circle(20, -10, 7, 0x2c3e50)
-    this.add(this.leftEye)
-    this.add(this.rightEye)
-
-    // Eye shine (highlights for personality!)
-    this.leftEyeShine = this.scene.add.circle(-18, -12, 2.5, 0xffffff, 0.8)
-    this.rightEyeShine = this.scene.add.circle(22, -12, 2.5, 0xffffff, 0.8)
-    this.add(this.leftEyeShine)
-    this.add(this.rightEyeShine)
-
-    // Mouth hint (small arc below)
-    const mouth = this.scene.add.arc(0, 15, 8, 0, Math.PI, false)
-    mouth.setStrokeStyle(2, 0x5a9a80, 1)
-    this.add(mouth)
+    // Use sprite texture for chameleon head
+    // Start with neutral expression
+    this.headSprite = this.scene.add.sprite(0, 0, 'chameleon-head-neutral')
+    this.headSprite.setOrigin(0.5, 0.5)
+    this.headSprite.setScale(0.7) // Adjust size to match previous head size
+    this.add(this.headSprite)
   }
 
   private createAimingIndicator() {
@@ -82,23 +50,19 @@ export class Chameleon extends Phaser.GameObjects.Container {
   }
 
   private createIdleAnimation() {
-    // Eyes blink occasionally
-    this.scene.time.delayedCall(3000 + Math.random() * 2000, () => {
-      this.blink()
-      this.createIdleAnimation() // Loop
+    // Subtle breathing animation
+    this.scene.tweens.add({
+      targets: this.headSprite,
+      scaleY: 0.72,
+      scaleX: 0.68,
+      duration: 2000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
     })
   }
 
-  private blink() {
-    // Quick eye close-open
-    this.scene.tweens.add({
-      targets: [this.leftEye, this.rightEye],
-      scaleY: 0.1,
-      duration: 100,
-      yoyo: true,
-      ease: 'Linear',
-    })
-  }
+  // Removed blink method - handled by idle animation now
 
   aimLeft() {
     this.targetAngle = Math.max(
@@ -327,93 +291,21 @@ export class Chameleon extends Phaser.GameObjects.Container {
   }
 
   private updateExpression(expression: string) {
-    switch (expression) {
-      case 'neutral':
-        this.applyNeutralExpression()
-        break
-      case 'happy':
-        this.applyHappyExpression()
-        break
-      case 'sad':
-        this.applySadExpression()
-        break
-      case 'thinking':
-        this.applyThinkingExpression()
-        break
+    // Switch sprite texture based on expression
+    const textureKey = `chameleon-head-${expression}`
+
+    if (this.scene.textures.exists(textureKey)) {
+      // Smooth fade transition between expressions
+      this.scene.tweens.add({
+        targets: this.headSprite,
+        alpha: 0.5,
+        duration: FEEL_CONFIG.EXPRESSION_TRANSITION_TIME / 2,
+        yoyo: true,
+        onYoyo: () => {
+          this.headSprite.setTexture(textureKey)
+        },
+      })
     }
   }
 
-  private applyNeutralExpression() {
-    // Default state: calm, ready
-    // Eyes: normal size, forward looking
-    this.scene.tweens.add({
-      targets: [this.leftEye, this.rightEye],
-      scale: 1.0,
-      duration: FEEL_CONFIG.EXPRESSION_TRANSITION_TIME,
-    })
-
-    // Reset rotation
-    this.scene.tweens.add({
-      targets: [this.leftEye, this.rightEye],
-      rotation: 0,
-      duration: FEEL_CONFIG.EXPRESSION_TRANSITION_TIME,
-    })
-  }
-
-  private applyHappyExpression() {
-    // Used when: catching correct insect, positive feedback
-    // Eyes: wider, slight squint (happy muscles)
-    this.scene.tweens.add({
-      targets: [this.leftEye, this.rightEye],
-      scale: 1.2,
-      duration: 150,
-      ease: 'Quad.easeOut',
-    })
-
-    // Mouth hint (slight brightness boost)
-    this.scene.tweens.add({
-      targets: this,
-      alpha: 1.05,
-      duration: 150,
-      yoyo: true,
-    })
-  }
-
-  private applySadExpression() {
-    // Used when: missing question, wrong answer
-    // Eyes: sad angle, droopy
-    this.scene.tweens.add({
-      targets: [this.leftEye, this.rightEye],
-      scale: 0.85,
-      duration: 250,
-      ease: 'Quad.easeOut',
-    })
-
-    // Slight head droop
-    this.scene.tweens.add({
-      targets: this,
-      y: this.y + 10,
-      duration: 250,
-      yoyo: true,
-      ease: 'Sine.easeInOut',
-    })
-  }
-
-  private applyThinkingExpression() {
-    // Used when: considering answer, cooldown active
-    // Eyes: one eye squinted (thinking pose)
-    this.scene.tweens.add({
-      targets: this.rightEye,
-      scale: 0.6,
-      duration: 300,
-      ease: 'Quad.easeInOut',
-    })
-
-    this.scene.tweens.add({
-      targets: this.leftEye,
-      scale: 1.1,
-      duration: 300,
-      ease: 'Quad.easeInOut',
-    })
-  }
 }
