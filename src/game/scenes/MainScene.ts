@@ -1,19 +1,17 @@
 import Phaser from 'phaser'
 import { GAME_CONFIG_BOUNDS, CHAMELEON_CONFIG, TONGUE_CONFIG } from '../config'
 import { Chameleon } from '../objects/Chameleon'
-import { QuestionCard } from '../objects/QuestionCard'
+import { SpawnManager } from '../managers/SpawnManager'
 import { InsectCard } from '../objects/InsectCard'
+import { QuestionCard } from '../objects/QuestionCard'
 
 export class MainScene extends Phaser.Scene {
   private chameleon!: Chameleon
+  private spawnManager!: SpawnManager
   private currentLevel: number = 1
   private score: number = 0
   private strikes: number = 0
   private maxStrikes: number = 3
-
-  // Placeholder for game objects
-  private questionCards: QuestionCard[] = []
-  private insectCards: InsectCard[] = []
 
   // UI elements
   private cooldownText!: Phaser.GameObjects.Text
@@ -67,10 +65,11 @@ export class MainScene extends Phaser.Scene {
     // Cooldown UI
     this.createCooldownUI()
 
-    // Game loop
-    this.time.delayedCall(2000, () => {
-      this.spawnQuestionCard()
-    })
+    // Initialize spawn manager
+    this.spawnManager = new SpawnManager(this, this.currentLevel)
+
+    // Start spawning questions and insects
+    this.spawnManager.start()
   }
 
   private createBackground() {
@@ -268,69 +267,6 @@ export class MainScene extends Phaser.Scene {
     this.cooldownRing.strokePath()
   }
 
-  private spawnQuestionCard() {
-    const question = {
-      id: 'placeholder-q1',
-      text: 'Which insect has wings you can see through?',
-    }
-
-    const card = new QuestionCard(
-      this,
-      GAME_CONFIG_BOUNDS.centerX,
-      100,
-      question
-    )
-
-    this.questionCards.push(card)
-
-    // Spawn test insects (placeholder data)
-    this.time.delayedCall(1500, () => {
-      this.spawnTestInsects()
-    })
-  }
-
-  private spawnTestInsects() {
-    // Create test insects - one correct, two wrong
-    const insects = [
-      {
-        id: 'glasswing-butterfly',
-        name: 'Glasswing Butterfly',
-        color: '#B8A8E8',
-        isCorrect: true,
-      },
-      {
-        id: 'hercules-beetle',
-        name: 'Hercules Beetle',
-        color: '#4A7BA7',
-        isCorrect: false,
-      },
-      {
-        id: 'blue-morpho',
-        name: 'Blue Morpho',
-        color: '#7BA7BC',
-        isCorrect: false,
-      },
-    ]
-
-    // Shuffle insects
-    Phaser.Utils.Array.Shuffle(insects)
-
-    // Spawn insects at different x positions
-    const spacing = 250
-    const startX = GAME_CONFIG_BOUNDS.centerX - spacing
-
-    insects.forEach((insectData, index) => {
-      const insect = new InsectCard(
-        this,
-        startX + index * spacing,
-        -50,
-        insectData,
-        insectData.isCorrect
-      )
-      this.insectCards.push(insect)
-    })
-  }
-
   private updateKeyboardRotation() {
     if (this.keyboardState.leftPressed) {
       this.chameleon.aimLeft()
@@ -365,23 +301,26 @@ export class MainScene extends Phaser.Scene {
     // Check if tongue has returned with caught insect
     this.checkTongueReturnComplete()
 
-    // Update question cards (reverse iteration to safely remove items)
-    for (let i = this.questionCards.length - 1; i >= 0; i--) {
-      const card = this.questionCards[i]
-      card.update(this.game.loop.delta)
-      if (card.isOffScreen()) {
-        this.onQuestionMissed(card)
-        this.questionCards.splice(i, 1)
-      }
-    }
+    // Update spawn manager (handles question and insect updates)
+    this.spawnManager.update()
 
-    // Update insect cards (reverse iteration to safely remove items)
-    for (let i = this.insectCards.length - 1; i >= 0; i--) {
-      const card = this.insectCards[i]
+    // Update all question cards
+    const questionCards = this.spawnManager.getActiveQuestionCards()
+    questionCards.forEach((card) => {
       card.update(this.game.loop.delta)
-      if (card.isOffScreenCheck() && !card.isCaughtByTongue()) {
-        this.insectCards.splice(i, 1)
-      }
+    })
+
+    // Update all insect cards
+    const insectCards = this.spawnManager.getActiveInsectCards()
+    insectCards.forEach((card) => {
+      card.update(this.game.loop.delta)
+    })
+  }
+
+  shutdown() {
+    // Clean up spawn manager
+    if (this.spawnManager) {
+      this.spawnManager.destroy()
     }
   }
 
@@ -396,7 +335,8 @@ export class MainScene extends Phaser.Scene {
     const tipRadius = tongue.getTipRadius()
 
     // Check collision with each insect
-    for (const insect of this.insectCards) {
+    const insectCards = this.spawnManager.getActiveInsectCards()
+    for (const insect of insectCards) {
       if (insect.isCaughtByTongue()) continue
 
       const distance = Phaser.Math.Distance.Between(tipX, tipY, insect.x, insect.y)
@@ -423,11 +363,8 @@ export class MainScene extends Phaser.Scene {
   }
 
   private onInsectCaught(insect: InsectCard) {
-    // Remove insect from active list
-    const index = this.insectCards.indexOf(insect)
-    if (index !== -1) {
-      this.insectCards.splice(index, 1)
-    }
+    // Let spawn manager handle cleanup and get correct insect info
+    const correctInsect = this.spawnManager.onInsectCaught(insect)
 
     // Check if correct answer
     if (insect.isCorrectAnswer()) {
@@ -436,7 +373,7 @@ export class MainScene extends Phaser.Scene {
       this.onWrongAnswer(insect)
     }
 
-    // Destroy the insect
+    // Destroy the caught insect
     insect.destroy()
   }
 
@@ -453,9 +390,6 @@ export class MainScene extends Phaser.Scene {
 
     // Show fact overlay
     this.showFactOverlay(insect, true)
-
-    // Clear remaining insects for this question
-    this.clearCurrentQuestion()
   }
 
   private onWrongAnswer(insect: InsectCard) {
@@ -469,53 +403,12 @@ export class MainScene extends Phaser.Scene {
     // Show fact overlay with correct answer info
     this.showFactOverlay(insect, false)
 
-    // Clear remaining insects for this question
-    this.clearCurrentQuestion()
-
     // Check if game over
     if (this.strikes >= this.maxStrikes) {
       this.time.delayedCall(3000, () => {
         this.scene.start('MenuScene')
       })
     }
-  }
-
-  private onQuestionMissed(question: QuestionCard) {
-    // Question fell off screen
-    this.strikes++
-    this.updateUI()
-
-    // Chameleon sad expression
-    this.chameleon.setExpression('sad')
-
-    // Show explanation overlay
-    this.showMissedQuestionOverlay(question)
-
-    // Clear remaining insects for this question
-    this.clearCurrentQuestion()
-
-    // Check if game over
-    if (this.strikes >= this.maxStrikes) {
-      this.time.delayedCall(3000, () => {
-        this.scene.start('MenuScene')
-      })
-    }
-  }
-
-  private clearCurrentQuestion() {
-    // Remove current question card
-    if (this.questionCards.length > 0) {
-      this.questionCards[0].destroy()
-      this.questionCards.splice(0, 1)
-    }
-
-    // Remove all current insect cards
-    for (const insect of this.insectCards) {
-      if (!insect.isCaughtByTongue()) {
-        insect.destroy()
-      }
-    }
-    this.insectCards = []
   }
 
   private createCelebrationParticles() {
@@ -549,6 +442,9 @@ export class MainScene extends Phaser.Scene {
 
   private showFactOverlay(insect: InsectCard, isCorrect: boolean) {
     this.isShowingFact = true
+
+    // Pause spawning while showing fact
+    this.spawnManager.stop()
 
     // Create overlay background
     const overlay = this.add.container(0, 0)
@@ -593,7 +489,7 @@ export class MainScene extends Phaser.Scene {
     const insectName = this.add.text(
       GAME_CONFIG_BOUNDS.centerX,
       boxY + 120,
-      insectData.name,
+      insectData.commonName,
       {
         fontFamily: "'Quicksand', sans-serif",
         fontSize: '32px',
@@ -604,9 +500,10 @@ export class MainScene extends Phaser.Scene {
     insectName.setOrigin(0.5)
     overlay.add(insectName)
 
-    // Fact text (placeholder - will be replaced with actual facts in Phase 5)
-    const factText =
-      'This insect is fascinating! Learn more about it as you progress through the game.'
+    // Fact text - use first fact from insect data
+    const factText = insectData.facts && insectData.facts.length > 0
+      ? insectData.facts[0]
+      : 'This insect is fascinating! Learn more about it as you progress through the game.'
     const fact = this.add.text(
       GAME_CONFIG_BOUNDS.centerX,
       boxY + 200,
@@ -657,119 +554,8 @@ export class MainScene extends Phaser.Scene {
       this.isShowingFact = false
       this.chameleon.setExpression('neutral')
 
-      // Spawn next question
-      this.time.delayedCall(1000, () => {
-        this.spawnQuestionCard()
-      })
-
-      // Remove listeners
-      this.input.off('pointerdown', dismissOverlay)
-      if (this.input.keyboard) {
-        this.input.keyboard.off('keydown-SPACE', dismissOverlay)
-      }
-    }
-
-    this.input.once('pointerdown', dismissOverlay)
-    if (this.input.keyboard) {
-      this.input.keyboard.once('keydown-SPACE', dismissOverlay)
-    }
-  }
-
-  private showMissedQuestionOverlay(_question: QuestionCard) {
-    this.isShowingFact = true
-
-    // Create overlay background
-    const overlay = this.add.container(0, 0)
-
-    // Semi-transparent background
-    const bg = this.add.graphics()
-    bg.fillStyle(0x000000, 0.7)
-    bg.fillRect(0, 0, GAME_CONFIG_BOUNDS.width, GAME_CONFIG_BOUNDS.height)
-    overlay.add(bg)
-
-    // Content box
-    const boxWidth = 800
-    const boxHeight = 400
-    const boxX = GAME_CONFIG_BOUNDS.centerX - boxWidth / 2
-    const boxY = GAME_CONFIG_BOUNDS.centerY - boxHeight / 2
-
-    const contentBox = this.add.graphics()
-    contentBox.fillStyle(0xe8f4f8, 0.98)
-    contentBox.fillRoundedRect(boxX, boxY, boxWidth, boxHeight, 16)
-    contentBox.lineStyle(4, 0xf4c8a8, 1)
-    contentBox.strokeRoundedRect(boxX, boxY, boxWidth, boxHeight, 16)
-    overlay.add(contentBox)
-
-    // Title
-    const title = this.add.text(
-      GAME_CONFIG_BOUNDS.centerX,
-      boxY + 50,
-      'Question Missed!',
-      {
-        fontFamily: "'Quicksand', sans-serif",
-        fontSize: '48px',
-        color: '#F4A6C6',
-        align: 'center',
-      }
-    )
-    title.setOrigin(0.5)
-    overlay.add(title)
-
-    // Explanation
-    const explanation = this.add.text(
-      GAME_CONFIG_BOUNDS.centerX,
-      boxY + 150,
-      'The question fell off the screen.\nTry to read and answer more quickly next time!',
-      {
-        fontFamily: "'Lexend', sans-serif",
-        fontSize: '24px',
-        color: '#2C3E50',
-        align: 'center',
-        wordWrap: { width: boxWidth - 100 },
-      }
-    )
-    explanation.setOrigin(0.5)
-    overlay.add(explanation)
-
-    // Continue prompt
-    const continueText = this.add.text(
-      GAME_CONFIG_BOUNDS.centerX,
-      boxY + boxHeight - 60,
-      'Press SPACE or Click to continue',
-      {
-        fontFamily: "'Quicksand', sans-serif",
-        fontSize: '18px',
-        color: '#7BA7BC',
-        align: 'center',
-      }
-    )
-    continueText.setOrigin(0.5)
-    overlay.add(continueText)
-
-    // Pulsing animation
-    this.tweens.add({
-      targets: continueText,
-      alpha: 0.5,
-      duration: 800,
-      yoyo: true,
-      repeat: -1,
-    })
-
-    this.factOverlay = overlay
-
-    // Input to dismiss
-    const dismissOverlay = () => {
-      if (this.factOverlay) {
-        this.factOverlay.destroy()
-        this.factOverlay = null
-      }
-      this.isShowingFact = false
-      this.chameleon.setExpression('neutral')
-
-      // Spawn next question
-      this.time.delayedCall(1000, () => {
-        this.spawnQuestionCard()
-      })
+      // Resume spawning
+      this.spawnManager.start()
 
       // Remove listeners
       this.input.off('pointerdown', dismissOverlay)
