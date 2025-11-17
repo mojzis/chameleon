@@ -7,7 +7,7 @@ export class Chameleon extends Phaser.GameObjects.Container {
   private targetAngle: number = 0
   private rotationVelocity: number = 0
   private tongue: Tongue | null = null
-  private lastTongueShot: number = 0
+  private lastTongueShot: number = -Infinity
   private expression: 'neutral' | 'happy' | 'sad' | 'thinking' = 'neutral'
 
   // Animation states

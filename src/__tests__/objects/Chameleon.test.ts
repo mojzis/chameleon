@@ -25,13 +25,28 @@ describe('Chameleon', () => {
           setTexture: vi.fn().mockReturnThis(),
           setVisible: vi.fn().mockReturnThis(),
           destroy: vi.fn(),
+          once: vi.fn(),
+          on: vi.fn(),
+          off: vi.fn(),
+          removeFromDisplayList: vi.fn(),
+          addedToScene: vi.fn(),
         }),
         circle: vi.fn().mockReturnValue({
           setStrokeStyle: vi.fn().mockReturnThis(),
           setAlpha: vi.fn().mockReturnThis(),
+          once: vi.fn(),
+          on: vi.fn(),
+          off: vi.fn(),
+          removeFromDisplayList: vi.fn(),
+          addedToScene: vi.fn(),
         }),
         arc: vi.fn().mockReturnValue({
           setStrokeStyle: vi.fn().mockReturnThis(),
+          once: vi.fn(),
+          on: vi.fn(),
+          off: vi.fn(),
+          removeFromDisplayList: vi.fn(),
+          addedToScene: vi.fn(),
         }),
         graphics: vi.fn().mockReturnValue({
           setAlpha: vi.fn().mockReturnThis(),
@@ -40,7 +55,13 @@ describe('Chameleon', () => {
           strokeCircle: vi.fn().mockReturnThis(),
           fillStyle: vi.fn().mockReturnThis(),
           fillCircle: vi.fn().mockReturnThis(),
+          fillRect: vi.fn().mockReturnThis(),
           destroy: vi.fn(),
+          once: vi.fn(),
+          on: vi.fn(),
+          off: vi.fn(),
+          removeFromDisplayList: vi.fn(),
+          addedToScene: vi.fn(),
         }),
       },
       physics: {
@@ -59,6 +80,9 @@ describe('Chameleon', () => {
         main: {
           shake: vi.fn(),
         },
+      },
+      textures: {
+        exists: vi.fn().mockReturnValue(true),
       },
     } as unknown as Phaser.Scene
 
