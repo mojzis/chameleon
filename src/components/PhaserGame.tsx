@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Phaser from 'phaser'
 import { GAME_CONFIG } from '../game/config'
 import { MainScene } from '../game/scenes/MainScene'
 import { MenuScene } from '../game/scenes/MenuScene'
+import GameOverlay from './GameOverlay'
 
 interface PhaserGameProps {
   onGameReady: () => void
@@ -11,6 +12,7 @@ interface PhaserGameProps {
 
 export default function PhaserGame({ onGameReady }: PhaserGameProps) {
   const phaserRef = useRef<Phaser.Game | null>(null)
+  const [game, setGame] = useState<Phaser.Game | null>(null)
 
   useEffect(() => {
     const config: Phaser.Types.Core.GameConfig = {
@@ -20,6 +22,7 @@ export default function PhaserGame({ onGameReady }: PhaserGameProps) {
     }
 
     phaserRef.current = new Phaser.Game(config)
+    setGame(phaserRef.current)
 
     onGameReady()
 
@@ -27,9 +30,15 @@ export default function PhaserGame({ onGameReady }: PhaserGameProps) {
       if (phaserRef.current) {
         phaserRef.current.destroy(true)
         phaserRef.current = null
+        setGame(null)
       }
     }
   }, [onGameReady])
 
-  return <div id="phaser-container" style={{ width: '100%', height: '100%' }} />
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <div id="phaser-container" style={{ width: '100%', height: '100%' }} />
+      <GameOverlay phaserGame={game} />
+    </div>
+  )
 }
