@@ -43,7 +43,7 @@ export class MenuScene extends Phaser.Scene {
 
     // Start button
     const startButton = this.add
-      .rectangle(GAME_CONFIG_BOUNDS.centerX, 500, 300, 80, 0x7BA7BC)
+      .rectangle(GAME_CONFIG_BOUNDS.centerX, 450, 300, 80, 0x7BA7BC)
       .setInteractive()
       .on('pointerdown', () => {
         this.scene.stop('MenuScene')
@@ -58,8 +58,35 @@ export class MenuScene extends Phaser.Scene {
 
     this.add.text(
       GAME_CONFIG_BOUNDS.centerX,
-      500,
+      450,
       'Select Level',
+      {
+        fontFamily: "'Quicksand', sans-serif",
+        fontSize: '28px',
+        color: '#FFFFFF',
+        align: 'center',
+      }
+    ).setOrigin(0.5)
+
+    // Encyclopedia button
+    const encyclopediaButton = this.add
+      .rectangle(GAME_CONFIG_BOUNDS.centerX, 570, 300, 80, 0x88B8A8)
+      .setInteractive()
+      .on('pointerdown', () => {
+        // Dispatch event to open encyclopedia in React
+        window.dispatchEvent(new CustomEvent('openEncyclopedia'))
+      })
+      .on('pointerover', () => {
+        encyclopediaButton.setFillStyle(0xA8E0C8)
+      })
+      .on('pointerout', () => {
+        encyclopediaButton.setFillStyle(0x88B8A8)
+      })
+
+    this.add.text(
+      GAME_CONFIG_BOUNDS.centerX,
+      570,
+      'Encyclopedia 📖',
       {
         fontFamily: "'Quicksand', sans-serif",
         fontSize: '28px',

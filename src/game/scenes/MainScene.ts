@@ -9,6 +9,7 @@ import { PlaceholderAssets } from '../utils/PlaceholderAssets'
 import { ScoreManager } from '../managers/ScoreManager'
 import { LevelProgressManager } from '../managers/LevelProgressManager'
 import { LEVELS } from '../../data/levels'
+import { encyclopediaManager } from '../../App'
 
 export class MainScene extends Phaser.Scene {
   private chameleon!: Chameleon
@@ -241,6 +242,11 @@ export class MainScene extends Phaser.Scene {
       // Help key
       this.input.keyboard.on('keydown-H', () => {
         this.activateHelp()
+      })
+
+      // Encyclopedia key (ESC)
+      this.input.keyboard.on('keydown-ESC', () => {
+        window.dispatchEvent(new CustomEvent('openEncyclopedia'))
       })
 
       // Pause functionality (placeholder for future phase)
@@ -524,6 +530,10 @@ export class MainScene extends Phaser.Scene {
     this.scoreManager.recordQuestionAttempted()
     this.questionsCompleted++
 
+    // Unlock insect in encyclopedia
+    encyclopediaManager.unlockInsect(insectData.id)
+    window.dispatchEvent(new CustomEvent('insectUnlocked', { detail: insectData.id }))
+
     this.updateUI()
 
     // Chameleon happy expression
@@ -544,6 +554,10 @@ export class MainScene extends Phaser.Scene {
     const insectData = insect.getInsectData()
     this.scoreManager.recordIncorrect(insectData.id)
     this.scoreManager.recordQuestionAttempted()
+
+    // Unlock insect in encyclopedia (player still learns about it)
+    encyclopediaManager.unlockInsect(insectData.id)
+    window.dispatchEvent(new CustomEvent('insectUnlocked', { detail: insectData.id }))
 
     // Add strike
     this.strikes++
