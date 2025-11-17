@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { TONGUE_CONFIG, FEEL_CONFIG } from '../config'
+import { InsectCard } from './InsectCard'
 
 export class Tongue extends Phaser.GameObjects.Graphics {
   private startX: number
@@ -9,6 +10,7 @@ export class Tongue extends Phaser.GameObjects.Graphics {
   private maxLength: number = TONGUE_CONFIG.maxLength
   private extending: boolean = true
   private finished: boolean = false
+  private caughtInsect: InsectCard | null = null
 
   // Animation curve
   private extensionStartTime: number = 0
@@ -246,5 +248,65 @@ export class Tongue extends Phaser.GameObjects.Graphics {
 
   getCurrentLength(): number {
     return this.currentLength
+  }
+
+  // Collision detection helper
+  getTipRadius(): number {
+    return TONGUE_CONFIG.tipRadius
+  }
+
+  // Catch an insect
+  catchInsect(insect: InsectCard): void {
+    if (this.caughtInsect) return // Already caught something
+
+    this.caughtInsect = insect
+    this.extending = false // Start retracting immediately
+    this.peakReachedAt = this.scene.time.now
+
+    // Visual/audio feedback
+    this.onInsectCaught()
+
+    // Attach insect to tongue
+    insect.attachToTongue(this)
+  }
+
+  private onInsectCaught() {
+    // Impact particles at catch point
+    const tipX = this.getTipX()
+    const tipY = this.getTipY()
+
+    for (let i = 0; i < 8; i++) {
+      const angle = (Math.PI * 2 * i) / 8
+      const speed = 100 + Math.random() * 50
+
+      const particle = this.scene.add.circle(
+        tipX,
+        tipY,
+        3 + Math.random() * 2,
+        0xa8e0c8
+      )
+
+      this.scene.tweens.add({
+        targets: particle,
+        x: tipX + Math.cos(angle) * speed,
+        y: tipY + Math.sin(angle) * speed,
+        alpha: 0,
+        scale: 0.3,
+        duration: 400,
+        ease: 'Quad.easeOut',
+        onComplete: () => particle.destroy(),
+      })
+    }
+
+    // Slight camera shake
+    this.scene.cameras.main.shake(100, 0.003)
+  }
+
+  getCaughtInsect(): InsectCard | null {
+    return this.caughtInsect
+  }
+
+  hasCaughtInsect(): boolean {
+    return this.caughtInsect !== null
   }
 }

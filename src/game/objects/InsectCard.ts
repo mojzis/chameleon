@@ -1,13 +1,15 @@
 import Phaser from 'phaser'
 import { CARD_CONFIG, GAME_CONFIG_BOUNDS } from '../config'
 import { Insect } from '../../types'
+import type { Tongue } from './Tongue'
 
 export class InsectCard extends Phaser.GameObjects.Container {
   private insectData: Insect
   private isCorrect: boolean
   private fallSpeed: number = CARD_CONFIG.insectFallSpeed
   private isOffScreen: boolean = false
-  private attachedToTongue: boolean = false
+  private attachedToTongue: Tongue | null = null
+  private isCaught: boolean = false
   private helpGlow: Phaser.GameObjects.Graphics | null = null
   private driftOffset: number = 0
 
@@ -54,8 +56,14 @@ export class InsectCard extends Phaser.GameObjects.Container {
   }
 
   update(delta: number) {
+    // If attached to tongue, follow tongue position
     if (this.attachedToTongue) {
-      // Follow tongue position (handled externally)
+      this.followTongue()
+      return
+    }
+
+    // If already caught, don't fall
+    if (this.isCaught) {
       return
     }
 
@@ -83,6 +91,49 @@ export class InsectCard extends Phaser.GameObjects.Container {
 
   isCorrectAnswer(): boolean {
     return this.isCorrect
+  }
+
+  celebrate() {
+    this.hideHelpGlow()
+    this.scene.tweens.add({
+      targets: this,
+      scaleX: 1.3,
+      scaleY: 1.3,
+      alpha: 0,
+      duration: 400,
+      onComplete: () => {
+        this.destroy()
+      },
+    })
+  }
+
+  attachToTongue(tongue: Tongue) {
+    this.attachedToTongue = tongue
+    this.isCaught = true
+    this.hideHelpGlow()
+
+    // Add rotation animation for caught effect
+    this.scene.tweens.add({
+      targets: this,
+      angle: this.angle + 360,
+      duration: 600,
+      ease: 'Quad.easeOut',
+    })
+  }
+
+  private followTongue() {
+    if (!this.attachedToTongue) return
+
+    const tipX = this.attachedToTongue.getTipX()
+    const tipY = this.attachedToTongue.getTipY()
+
+    // Smooth follow with slight lag for organic feel
+    this.x = Phaser.Math.Linear(this.x, tipX, 0.3)
+    this.y = Phaser.Math.Linear(this.y, tipY, 0.3)
+  }
+
+  detachFromTongue() {
+    this.attachedToTongue = null
   }
 
   showHelpGlow() {
@@ -114,22 +165,7 @@ export class InsectCard extends Phaser.GameObjects.Container {
     }
   }
 
-  attachToTongue() {
-    this.attachedToTongue = true
-    this.hideHelpGlow()
-  }
-
-  celebrate() {
-    this.hideHelpGlow()
-    this.scene.tweens.add({
-      targets: this,
-      scaleX: 1.3,
-      scaleY: 1.3,
-      alpha: 0,
-      duration: 400,
-      onComplete: () => {
-        this.destroy()
-      },
-    })
+  isCaughtByTongue(): boolean {
+    return this.isCaught
   }
 }
