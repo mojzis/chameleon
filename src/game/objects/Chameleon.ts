@@ -38,8 +38,11 @@ export class Chameleon extends Phaser.GameObjects.Container {
     // Start with neutral expression
     this.headSprite = this.scene.add.sprite(0, 0, 'chameleon-head-neutral')
     this.headSprite.setOrigin(0.5, 0.5)
-    this.headSprite.setScale(0.7) // Adjust size to match previous head size
+    this.headSprite.setScale(1.0) // Make head more visible
     this.add(this.headSprite)
+
+    // Ensure container is visible and has proper depth
+    this.setDepth(100)
   }
 
   private createAimingIndicator() {
@@ -102,7 +105,7 @@ export class Chameleon extends Phaser.GameObjects.Container {
     // Reset input buffer on successful shot
     this.inputBuffer = false
 
-    this.tongue = new Tongue(scene, this.x, this.y, this.currentAngle)
+    this.tongue = new Tongue(scene, this.x, this.y, this.targetAngle)
     this.lastTongueShot = now
     this.setCoolingDown(true)
 
