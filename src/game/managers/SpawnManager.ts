@@ -101,6 +101,7 @@ export class SpawnManager {
   ) {
     // Get distractor insects (wrong answers)
     const distractors = this.getDistractors(
+      question,
       correctInsect,
       question.distractorCount
     )
@@ -144,13 +145,85 @@ export class SpawnManager {
 
   /**
    * Get distractor insects (wrong answers)
+   * Filters distractors to be semantically appropriate for the question
    */
-  private getDistractors(correctInsect: Insect, count: number): Insect[] {
-    // Get insects from same level or lower
-    const availableInsects = INSECTS.filter(
+  private getDistractors(
+    question: Question,
+    correctInsect: Insect,
+    count: number
+  ): Insect[] {
+    // Start with insects from same level or lower
+    let availableInsects = INSECTS.filter(
       (insect) =>
         insect.id !== correctInsect.id && insect.level <= correctInsect.level
     )
+
+    // Filter distractors based on question type and characteristics
+    // This ensures the wrong answers are plausible, making the game more educational
+
+    // For habitat questions, only include insects from different habitats
+    if (
+      question.type === 'habitat' ||
+      question.text.toLowerCase().includes('habitat') ||
+      question.text.toLowerCase().includes('found in') ||
+      question.text.toLowerCase().includes('cloudforest')
+    ) {
+      availableInsects = availableInsects.filter(
+        (insect) => insect.habitat !== correctInsect.habitat
+      )
+    }
+
+    // For size/comparison questions, prefer insects of similar or different sizes
+    if (
+      question.type === 'comparison' ||
+      question.text.toLowerCase().includes('largest') ||
+      question.text.toLowerCase().includes('biggest') ||
+      question.text.toLowerCase().includes('bigger than')
+    ) {
+      // Prefer insects of similar size to make it more challenging
+      const similarSize = availableInsects.filter(
+        (insect) => insect.size === correctInsect.size
+      )
+      if (similarSize.length >= count) {
+        availableInsects = similarSize
+      }
+    }
+
+    // For color/appearance questions, prefer insects from the same visual category
+    if (
+      question.type === 'identification' ||
+      question.text.toLowerCase().includes('look') ||
+      question.text.toLowerCase().includes('color') ||
+      question.text.toLowerCase().includes('shine') ||
+      question.text.toLowerCase().includes('transparent') ||
+      question.text.toLowerCase().includes('metallic')
+    ) {
+      // Try to match by color category or visual traits
+      const sameColorCategory = availableInsects.filter(
+        (insect) => insect.color === correctInsect.color
+      )
+      if (sameColorCategory.length >= count) {
+        availableInsects = sameColorCategory
+      }
+    }
+
+    // For behavior questions, prefer insects from the same habitat/ecological niche
+    if (question.type === 'behavior') {
+      const sameHabitat = availableInsects.filter(
+        (insect) => insect.habitat === correctInsect.habitat
+      )
+      if (sameHabitat.length >= count) {
+        availableInsects = sameHabitat
+      }
+    }
+
+    // If we don't have enough insects after filtering, fall back to level-based selection
+    if (availableInsects.length < count) {
+      availableInsects = INSECTS.filter(
+        (insect) =>
+          insect.id !== correctInsect.id && insect.level <= correctInsect.level
+      )
+    }
 
     // Shuffle and take the requested count
     Phaser.Utils.Array.Shuffle(availableInsects)
