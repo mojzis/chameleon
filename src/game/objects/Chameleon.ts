@@ -105,7 +105,9 @@ export class Chameleon extends Phaser.GameObjects.Container {
     // Reset input buffer on successful shot
     this.inputBuffer = false
 
-    this.tongue = new Tongue(scene, this.x, this.y, this.targetAngle)
+    // Convert from chameleon angle system (0° = up) to standard trig (0° = right)
+    // by subtracting 90 degrees
+    this.tongue = new Tongue(scene, this.x, this.y, this.targetAngle - 90)
     this.lastTongueShot = now
     this.setCoolingDown(true)
 
@@ -227,7 +229,8 @@ export class Chameleon extends Phaser.GameObjects.Container {
     this.aimingReticle.setAlpha(0.5)
 
     // Draw small circle ahead of chameleon (direction of aim)
-    const angleRad = Phaser.Math.DegToRad(this.currentAngle)
+    // Convert from chameleon angle system (0° = up) to standard trig (0° = right)
+    const angleRad = Phaser.Math.DegToRad(this.currentAngle - 90)
     const aimX = Math.cos(angleRad) * 150
     const aimY = Math.sin(angleRad) * 150
 
